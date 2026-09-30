@@ -2,6 +2,46 @@
 
 Todas as alterações relevantes do Controle de Movimentação Melodia Pet são registradas neste arquivo.
 
+## v1.1.9 — 30/09/2026
+
+### Melhorias
+
+- Seletor de tipo do relatório passa a ter visual alinhado aos campos de mês e ordenação.
+- Ajustes visuais unificam a altura e as setas dos filtros.
+- Relatório pode ser ordenado por data, paletes ou unidades; **Data - Decrescente** é a opção padrão.
+
+### Correções de bugs
+
+- Seletor de tipo fecha automaticamente ao clicar fora dele.
+- Ícone de senha agora representa corretamente o estado do campo.
+
+## v1.1.8 — 30/09/2026
+
+### Melhorias
+
+- Filtros e botões do relatório ficam lado a lado em telas maiores, na proporção aproximada de 60% para filtros e 40% para ações.
+- Filtro de ordenação passa a exibir as opções **Data - Crescente** e **Data - Decrescente**.
+- A senha do Admin pode ser exibida ou ocultada pelo ícone de olho dentro do próprio campo.
+
+### Correções de bugs
+
+- Rótulo do filtro de tipo alinhado ao padrão dos demais filtros.
+- Checkboxes de tipo passam a seguir a paleta visual do Admin.
+- Layout mantém a organização adequada em telas menores.
+- Botão separado **Mostrar senha** removido, deixando a tela de acesso mais compacta.
+
+## v1.1.7 — 30/09/2026
+
+### Melhorias
+
+- Relatório do Admin recebe filtro por tipo de movimentação, com seleção independente de **Palete** e **Avulso**.
+- Recebimentos podem ser ordenados em ordem cronológica crescente ou decrescente.
+- PDF e CSV passam a respeitar os filtros escolhidos no relatório.
+
+### Correções de bugs
+
+- Filtros do relatório são mantidos ao expandir ou recolher um recebimento.
+
 ## v1.1.6 — 21/09/2026
 
 ### Melhorias
