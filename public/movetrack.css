@@ -308,3 +308,49 @@ button.mt-iconized:has(>.mt-button-icon){display:inline-flex;align-items:center;
 @keyframes mt-loader-drop-two{0%,24%{opacity:0;transform:translateY(-55px)}26%{opacity:1;transform:translateY(-55px)}38%{opacity:1;transform:translateY(2px)}42%,82%{opacity:1;transform:translateY(0)}92%,100%{opacity:0;transform:translateY(0)}}
 @keyframes mt-loader-drop-three{0%,44%{opacity:0;transform:translateY(-55px)}46%{opacity:1;transform:translateY(-55px)}58%{opacity:1;transform:translateY(2px)}62%,82%{opacity:1;transform:translateY(0)}92%,100%{opacity:0;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.mt-loader-box{animation:none;opacity:1;transform:none}}
+
+/* v1.2.1: a linha de recebimento não herda o layout de botões de ação. */
+#app .shell button.receipt-row{display:grid!important;grid-template-columns:32px minmax(0,1fr) 22px;align-items:center;justify-content:stretch;gap:12px;width:100%;min-width:0;min-height:76px;padding:12px 14px;text-align:left;white-space:normal;background:#fff7f1!important;color:#6a2e0a!important;border:1px solid #e9bd9f!important;border-radius:10px}
+#app .shell button.receipt-row:hover{background:#fff0e5!important}
+#app .shell button.receipt-row:focus-visible{outline:3px solid #fcb539;outline-offset:2px}
+#app .receipt-row .receipt-number{display:grid;place-items:center;align-self:center;width:32px;min-width:32px;height:32px;margin:0;padding:0;font-size:.9rem;background:#e2752a!important;color:white!important;border-radius:7px}
+#app .receipt-row .receipt-main{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:7px 10px;min-width:0;margin:0;font-size:.85rem;line-height:1.5;color:inherit}
+#app .receipt-row .receipt-date{white-space:nowrap;font-weight:700}
+#app .receipt-row .receipt-tags{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0}
+#app .receipt-row .receipt-pallets,#app .receipt-row .receipt-units{white-space:nowrap;font-weight:600}
+#app .receipt-row .receipt-pallets:before,#app .receipt-row .receipt-units:before{content:'·';margin-right:8px;color:#a57c63}
+#app .receipt-row .receipt-signature{display:inline-flex;flex:none;align-items:center;justify-content:center;margin:0;padding:3px 6px;background:white;border:1px solid #e9bd9f;border-radius:6px}
+#app .receipt-row .receipt-signature img{display:block;width:86px!important;height:34px!important;object-fit:contain}
+#app .receipt-row .receipt-arrow{display:grid;place-items:center;justify-self:end;width:22px;height:24px;margin:0;padding:0}
+#app .receipt-arrow svg{display:block;width:14px;height:14px;transition:transform .2s ease}
+#app .receipt-row[aria-expanded=true] .receipt-arrow svg{transform:rotate(180deg)}
+#app .default-color .default-color-copy{display:grid!important;grid-template-columns:minmax(0,1fr);gap:3px;align-content:center;align-items:start;text-align:left;line-height:1.35}
+#app .default-color .default-color-copy>span{display:block}
+#app .default-color .default-color-copy>.small{margin:0;font-weight:400}
+#app .default-color .default-color-inputs{display:flex;align-items:center;flex:none;gap:.55rem}
+#app .default-color .default-color-inputs input{margin:0}
+@media(max-width:600px){#app .shell button.receipt-row{grid-template-columns:28px minmax(0,1fr) 18px;gap:8px;padding:10px;min-height:76px}#app .receipt-row .receipt-number{width:28px;min-width:28px;height:28px}#app .receipt-row .receipt-main{font-size:.8rem;gap:5px 8px}#app .receipt-row .receipt-signature img{width:74px!important;height:30px!important}#app .default-color{gap:.7rem}}
+
+/* Resumo e pendentes compartilham a apresentação dos dados de produto. */
+#app .movement-summary .mt-summary-title{margin:12px 12px 8px;font-size:1rem;text-align:left}
+#app .line-product strong,#app .mt-pallet-copy strong{display:block;font-weight:750;color:var(--role-text,#001a38);line-height:1.4}
+#app .line-product small,#app .mt-pallet-copy small{display:block;margin-top:4px;color:#61758d;font-size:.78rem;font-weight:400;line-height:1.4}
+#app .mt-pallet-copy{display:block;min-width:0;text-align:left}
+#app .shell button.receipt-row{grid-template-columns:32px minmax(0,1fr) auto 22px;background:#f3c8aa!important}
+#app .shell button.receipt-row:hover{background:#efba94!important}
+#app .receipt-row .receipt-main{flex:initial;justify-content:flex-start;text-align:left}
+#app .receipt-row .receipt-tags{width:auto!important;min-width:0;flex:0 0 auto!important;justify-content:flex-start}
+#app .receipt-row>.receipt-signature{justify-self:end}
+#app .receipt-row:not(:has(>.receipt-signature)){grid-template-columns:32px minmax(0,1fr) 22px}
+@media(max-width:600px){#app .shell button.receipt-row{grid-template-columns:28px minmax(0,1fr) auto 18px}#app .receipt-row:not(:has(>.receipt-signature)){grid-template-columns:28px minmax(0,1fr) 18px}#app .receipt-row>.receipt-signature{padding:2px 4px}#app .receipt-row>.receipt-signature img{width:62px!important;height:30px!important}}
+
+/* Cores dos recebimentos escolhidas na prévia pelo usuário. */
+#app .shell button.receipt-row,#app .shell button.receipt-row:hover{background:#e2752a!important;color:#ffffff!important}
+#app .receipt-row .receipt-number{background:#f8dcc8!important;color:#6a2e0a!important}
+#app .receipt-row .receipt-pallets:before,#app .receipt-row .receipt-units:before{color:inherit}
+
+/* Com poucos produtos, prioriza a primeira linha sem alterar a ordem alfabética. */
+#app .mt-summary-products{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:210px;justify-content:start;align-content:start;align-items:stretch}
+#app .mt-summary-products.mt-summary-single-row{grid-template-rows:auto}
+#app .mt-summary-products .product-column{display:contents}
+#app .mt-summary-products .line-product{width:210px;min-width:0;overflow-wrap:anywhere}

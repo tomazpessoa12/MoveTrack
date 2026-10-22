@@ -1,4 +1,4 @@
-/* MoveTrack v1.2.0 — interface de movimentação. */
+/* MoveTrack v1.2.1 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -17,6 +17,44 @@ function mtProductImage(item) {
   const code=mtProductCode(item);
   return code?`<span class="mt-product-image"><img src="https://nnpessoa.agilecdn.com.br/${code}.jpg" alt="" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden aria-label="Imagem indisponível">${mtIcon('image')}</span></span>`:`<span class="mt-product-image mt-image-missing" aria-label="Imagem indisponível">${mtIcon('image')}</span>`;
 }
+function mtProductDetails(item){
+  const same=(state.pallets||[]).concat(state.partials||[]).find(source=>source.product===item.product && source.productCode);
+  const code=mtProductCode(item)||(same?mtProductCode(same):null);
+  const known=mtCatalog().find(product=>product.code===code);
+  const name=known?.name||String(item.product||'').replace(code?new RegExp(`^\\s*${code}\\s*[-·:]?\\s+`):/^$/, '');
+  return {code,name};
+}
+function mtSummaryCard(item){
+  const {code,name}=mtProductDetails(item);
+  return `<div class="line-product" style="--line:${productLine(name).color}"><strong>${esc(name)}</strong><small>Cód: ${code??'—'} - ${fmt(item.quantity)} unidades</small></div>`;
+}
+function mtSummaryProducts(items,report=false){
+  const sorted=[...items].sort((a,b)=>mtProductDetails(a).name.localeCompare(mtProductDetails(b).name,'pt-BR'));
+  const columns=[];for(let i=0;i<sorted.length;i+=2)columns.push(sorted.slice(i,i+2));
+  return `<div class="product-scroll mt-summary-products ${report?'report-products':''}" data-item-count="${sorted.length}">${columns.map(column=>`<div class="product-column">${column.map(mtSummaryCard).join('')}</div>`).join('')||'<span class="small">Nenhum item no período.</span>'}</div>`;
+}
+// Poucos itens usam uma linha; resumos maiores preservam duas linhas por coluna.
+function mtSummaryRowCount(count,width,gap=10,cardWidth=210){
+  const capacity=Math.max(1,Math.floor((width+gap)/(cardWidth+gap)));
+  return count<=capacity?1:2;
+}
+function mtArrangeSummary(element){
+  const style=getComputedStyle(element);
+  const width=element.clientWidth-parseFloat(style.paddingLeft||0)-parseFloat(style.paddingRight||0);
+  const rows=mtSummaryRowCount(Number(element.dataset.itemCount||0),width,parseFloat(style.columnGap)||10,210);
+  element.classList.toggle('mt-summary-single-row',rows===1);
+}
+const mtSummaryWatched=new Set();
+const mtSummaryResize=typeof ResizeObserver==='function'?new ResizeObserver(entries=>entries.forEach(entry=>mtArrangeSummary(entry.target))):null;
+function mtWatchSummaries(){
+  for(const element of mtSummaryWatched){if(!element.isConnected){mtSummaryResize?.unobserve(element);mtSummaryWatched.delete(element)}}
+  document.querySelectorAll('.mt-summary-products').forEach(element=>{
+    if(mtSummaryWatched.has(element))return;
+    mtSummaryWatched.add(element);mtArrangeSummary(element);mtSummaryResize?.observe(element);
+  });
+}
+window.addEventListener('resize',()=>document.querySelectorAll('.mt-summary-products').forEach(mtArrangeSummary));
+cards=function(){const s=state.summary;return `<section class="movement-summary"><div class="movement-title">AGUARDANDO TRANSFERÊNCIA</div><div class="movement-counts"><div class="movement-count"><strong>${s.pallets}</strong><span>PALLETS</span></div><div class="movement-count"><strong>${s.partials}</strong><span>AVULSOS</span></div></div><h3 class="mt-summary-title">Resumo de itens</h3>${mtSummaryProducts(s.products)}</section>`};
 let mtToastTimer;
 function mtToast(message,error=false) {
   clearTimeout(mtToastTimer);
@@ -63,7 +101,8 @@ table=function(items,cancel=false){
   container.content.querySelectorAll('tbody tr').forEach((row,index)=>{
     const item=items[index],cell=row.querySelector('td');
     if(item&&cell){
-      cell.innerHTML=`<span class="mt-pallet-product">${mtProductImage(item)}<span>${esc(item.product)}</span></span>`;
+      const details=mtProductDetails(item);
+      cell.innerHTML=`<span class="mt-pallet-product">${mtProductImage({...item,productCode:details.code})}<span class="mt-pallet-copy"><strong>${esc(details.name)}</strong><small>Cód: ${details.code??'—'}</small></span></span>`;
       const opCell=row.querySelectorAll('td')[1];if(opCell)opCell.textContent=mtOpNumber(item.op);
     }
   });
@@ -109,7 +148,7 @@ function mtButtonIconName(button){
   if(/zoom|buscar|pesquisar/.test(label))return 'magnifying-glass';
   if(/orden|filtr|aplicar/.test(label))return 'filter';
   if(/pendente/.test(label))return 'clipboard-list';
-  if(/avulso/.test(label))return 'box';if(/registrar.*(?:palete|pallet)/.test(label))return 'boxes-stacked';if(/palete|pallet/.test(label))return 'box';
+  if(/avulso/.test(label))return 'box';if(/registrar.*(?:palete|pallet)/.test(label))return 'boxes-stacked';if(/palete|pallet/.test(label))return 'boxes-stacked';
   if(/transferencia|receber/.test(label))return 'truck';
   if(/adicionar|novo|registrar|incluir/.test(label))return 'plus';
   if(/confirmar|continuar/.test(label))return 'check';
@@ -119,7 +158,7 @@ function mtButtonIconName(button){
 function mtEnhanceButtons(root=document){
   const buttons=root.querySelectorAll?.('button')||[];
   buttons.forEach(button=>{
-    if(button.matches('.mt-menu-item,#mt-collapse,.mt-mobile-menu,.mt-toast button'))return;
+    if(button.matches('.mt-menu-item,#mt-collapse,.mt-mobile-menu,.mt-toast button,.receipt-row'))return;
     if(button.querySelector('.mt-button-icon'))return;
     if(button.id==='toggle-password')button.replaceChildren();
     else if(button.querySelector('svg'))return;
@@ -127,7 +166,7 @@ function mtEnhanceButtons(root=document){
     button.prepend(icon);button.classList.add('mt-iconized');
   });
 }
-new MutationObserver(()=>mtEnhanceButtons()).observe(document.body,{childList:true,subtree:true});
+new MutationObserver(()=>{mtEnhanceButtons();mtWatchSummaries()}).observe(document.body,{childList:true,subtree:true});
 
 const mtNativeFetch=window.fetch.bind(window);
 let mtBusyCount=0,mtBusyDelay;
@@ -168,6 +207,15 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+  {version:'1.2.1',improvements:[
+    'Abas operacionais padronizadas como Paletes e Avulsos, com ícones distintos.',
+    'Resumo preenche uma única linha quando os itens cabem na largura disponível; demais itens mantêm duas linhas por coluna.',
+    'Texto e descrição da cor padrão organizados ao lado do seletor.',
+    'Resumos e pendentes com nome destacado e código do produto; ícone instalado com a borda neon aprovada.'
+  ],fixes:[
+    'Recebimentos com numeração à esquerda, assinatura junto às informações e uma única seta à direita.',
+    'Recebimentos com cores aprovadas na prévia e número em destaque separado; alinhamento preservado.'
+  ]},
   {version:'1.2.0',improvements:[
     'Nova identidade MoveTrack™, menu lateral por área e ícones Font Awesome Free.',
     'Login com ciclo contínuo na doca: ré de 7 segundos, palete em camadas e partida imediata após carregar.',

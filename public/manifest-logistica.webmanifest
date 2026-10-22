@@ -9,12 +9,12 @@
   "theme_color": "#FCB539",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/movetrack-neon-192-v121.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/movetrack-neon-512-v121.png",
       "sizes": "512x512",
       "type": "image/png"
     }

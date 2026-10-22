@@ -2,6 +2,24 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.2.1 — 22/10/2026
+
+### Melhorias
+
+- Produção passa a usar o nome Paletes na aba principal, preservando o conteúdo.
+- Ícones distintos para Paletes (boxes-stacked) e Avulsos (box) na operação.
+- Descrição da cor padrão abaixo do título, alinhada à esquerda e ao lado do seletor.
+- Resumo prioriza uma linha quando os produtos cabem na largura disponível; resumos maiores mantêm duas linhas por coluna em ordem alfabética.
+- Resumo de itens padronizado nas três áreas: nome destacado, código e unidades em texto menor.
+- Pendentes de Produção e Admin exibem nome destacado e código abaixo, mantendo quantidade na coluna própria.
+- Ícone PWA usa a arte aprovada com borda azul neon e novos endereços para atualização.
+
+### Correções de bugs
+
+- Recebimentos reorganizados com número à esquerda, informações e assinatura em sequência e uma única seta à direita.
+- Regras gerais dos botões deixam de centralizar o conteúdo e aplicar laranja forte aos recebimentos.
+- Layout dos recebimentos se adapta ao menu aberto e a telas menores; assinatura e seta à direita, com dados à esquerda. Cores aprovadas: fundo #E2752A e texto branco; número com fundo #F8DCC8 e texto #6A2E0A.
+
 ## v1.2.0 — 22/10/2026
 
 ### Melhorias
