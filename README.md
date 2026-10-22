@@ -1,8 +1,15 @@
-# Controle de Movimentação Melodia Pet
+<p align="center">
+  <img src="public/movetrack-logo.svg" alt="MoveTrack™" width="360">
+</p>
+
+<h1 align="center">MoveTrack</h1>
+<p align="center">Da produção à logística, cada movimentação acompanhada.</p>
+
+<p align="center"><strong>Produção · Logística · Administração</strong></p>
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.1.9` · Consulte o histórico completo em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.2.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -32,7 +39,7 @@ Com a leitura do QR Code, o sistema registra automaticamente o palete como pront
 
 - Registra paletes prontos por leitura de QR Code;
 - Mantém a lista de paletes pendentes até a transferência real;
-- Permite cancelar um palete pendente, exigindo o motivo;
+- Permite cancelar um palete pendente após confirmação, com motivo opcional;
 - Permite retirar unidades avulsas de um palete para adiantamentos, reduzindo o saldo do palete original.
 
 ### Logística
@@ -49,6 +56,8 @@ Com a leitura do QR Code, o sistema registra automaticamente o palete como pront
 - Exibe relatório mensal de movimentações com totalizadores;
 - Diferencia visualmente recebimentos de paletes e de unidades avulsas;
 - Mostra a assinatura, data/hora e os itens que compõem cada recebimento;
+- Gerencia o catálogo de produtos, com pesquisa, fotos, edição e importação manual da planilha do Sankhya;
+- Exporta relatórios em PDF e CSV, respeitando filtros e ordenação;
 - Configura o webhook, dias e horário do resumo automático enviado ao Discord.
 - Permite configurar linhas de produto, cores de identificação e uma cor padrão para itens sem regra.
 
@@ -73,6 +82,12 @@ O envio é configurável por dia da semana e horário, permitindo adaptar a roti
 - **Configurações privadas persistentes:** webhook do Discord e demais configurações ficam dentro da pasta local `data`, fora do GitHub.
 - **Interface responsiva:** pensada para uso em celular, tablet e computador na rede interna.
 - **Aplicativo instalável (PWA):** em dispositivos compatíveis, pode ser instalado pelo navegador e aberto em uma janela própria.
+
+## Experiência de uso
+
+A interface mantém uma identidade própria para cada área: azul na Produção, amarelo na Logística e laranja na Administração. O menu lateral recolhível organiza as funções por equipe. A leitura de QR Code, os avisos com ícones e a animação de carregamento ajudam a acompanhar cada operação.
+
+O catálogo é local e pode ser mantido manualmente ou importado de uma planilha, sem depender de conexão com o ERP durante a operação. As instalações PWA de Admin, Produção e Logística têm acessos independentes.
 
 ## Tecnologias utilizadas
 

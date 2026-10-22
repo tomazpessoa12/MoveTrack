@@ -4,3 +4,8 @@ caddy_config
 node_modules
 .git
 README.md
+
+.env
+.env.*
+data.json
+settings.json

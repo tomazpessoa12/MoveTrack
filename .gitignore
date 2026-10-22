@@ -3,3 +3,10 @@ data/
 .env
 caddy_data/
 caddy_config/
+
+# Execução local e arquivos privados
+/data.json
+/settings.json
+node_modules/
+.env.*
+!.env.example

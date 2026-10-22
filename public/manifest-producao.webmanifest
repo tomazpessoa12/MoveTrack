@@ -1,1 +1,22 @@
-{"id":"/producao","name":"Movimentação Melodia — Produção","short_name":"Produção","start_url":"/producao","scope":"/","display":"standalone","background_color":"#f3f6fa","theme_color":"#E2752A","icons":[{"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png"}]}
+{
+  "id": "/producao",
+  "name": "MoveTrack-Produção",
+  "short_name": "MoveTrack-Produção",
+  "start_url": "/producao",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#001A38",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

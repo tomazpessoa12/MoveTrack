@@ -1,6 +1,34 @@
 # Changelog
 
-Todas as alterações relevantes do Controle de Movimentação Melodia Pet são registradas neste arquivo.
+Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
+
+## v1.2.0 — 22/10/2026
+
+### Melhorias
+
+- Nova marca MoveTrack em duas linhas, símbolo de palete e indicação ™, com instalações PWA individuais para Admin, Produção e Logística.
+- Login administrativo redesenhado com cena isométrica de doca: ré de 7 segundos, palete saindo pela porta em camadas sem fade nem parada intermediária e partida imediata após carregar. Caminhão com logo MoveTrack na perspectiva da carroceria. Textos do login preservados.
+- Menu lateral administrativo recolhível, organizado por Administração, Produção e Logística, com cores próprias e ícones Font Awesome Free.
+- Catálogo local de produtos com 80 registros iniciais, pesquisa, ordenação, edição, exclusão individual ou em lote e importação CSV a partir da consulta do Sankhya.
+- Foto vinculada ao código do produto nos paletes e no catálogo, com indicação quando indisponível.
+- Confirmação visual destacada e loading personalizado isométrico cartoon: base de quatro caixas, uma caixa superior fixa e três caixas animadas completando duas camadas.
+- Ícones nas ações do sistema e cabeçalho unificado com as marcas MoveTrack e Melodia Pet, alinhados verticalmente. O lettering é extraído da referência e tem 60% da altura do ícone.
+- Filtros e ações do relatório divididos em mês 17%, tipo 17%, ordenação 21% e botões 45%; mês exibido como “Outubro 2026”.
+- Catálogo com itens mais altos, checkbox estilizado na paleta do Admin, edição por ícone e exclusão pela seleção.
+- Cor padrão e botão de adicionar linha organizados lado a lado nas configurações.
+- Contador do catálogo acompanha os produtos exibidos na pesquisa.
+- Ícones boxes-stacked para registrar palete, box para avulsos e QR Code do Font Awesome Free.
+- Confirmações antes de remover itens ou excluir produtos.
+
+### Correções de bugs
+
+- Avisos de sucesso e erro fecham automaticamente após 3 segundos, com saída em fade subindo e temporizador reiniciado a cada novo aviso.
+- Ícone de visualizar senha centralizado, com estado aberto/fechado correspondente ao campo.
+- Pendentes em Produção e Admin: produto à esquerda; OP e quantidade à direita; status e pronto em centralizados.
+- Corrigidos espaçamento dos filtros, abertura do mês com um clique, alinhamento dos dias do Discord e ordem das três versões no changelog.
+- O código do produto é associado ao palete durante a leitura quando presente no QR ou identificável no catálogo.
+- Feedback duplicado removido e OP exibida sem repetir o prefixo.
+- Palete cancelado pode ser registrado novamente com o mesmo QR, mantendo o cancelamento anterior no histórico; motivo do cancelamento é opcional.
 
 ## v1.1.9 — 30/09/2026
 

@@ -1,8 +1,8 @@
-const CACHE = 'melodia-movimentacao-v1.1.9';
+const CACHE = 'movetrack-v1.2.0-release';
 const ASSETS = [
-  '/', '/producao', '/logistica', '/admin', '/producao.html', '/logistica.html', '/admin.html', '/style.css', '/app.js',
-  '/vendor/jsQR.js', '/melodia-logo.png', '/manifest.webmanifest', '/manifest-producao.webmanifest', '/manifest-logistica.webmanifest', '/manifest-admin.webmanifest',
-  '/icons/icon-192.png', '/icons/icon-512.png'
+  '/', '/producao', '/logistica', '/admin', '/producao.html', '/logistica.html', '/admin.html', '/style.css', '/app.js', '/movetrack.css', '/movetrack.js', '/movetrack-mark.svg', '/movetrack-logo.svg', '/movetrack-logo-light.svg',
+  '/vendor/jsQR.js', '/vendor/fontawesome-free-icons.js', '/melodia-logo.png', '/manifest.webmanifest', '/manifest-producao.webmanifest', '/manifest-logistica.webmanifest', '/manifest-admin.webmanifest',
+  '/icons/icon-192.png', '/icons/icon-512.png', '/dock-animation.js', '/assets/dock-background.webp', '/assets/dock-foreground-v2.webp', '/assets/dock-truck-movetrack-v2.webp', '/assets/dock-pallet-v2.webp', '/assets/loader-pallet.webp', '/assets/loader-box.webp'
 ];
 
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));

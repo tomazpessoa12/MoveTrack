@@ -2,7 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json server.js ./
+COPY package.json server.js catalog-seed.json ./
 COPY public ./public
 
 ENV PORT=7000
