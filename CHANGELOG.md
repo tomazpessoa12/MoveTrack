@@ -2,6 +2,17 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.2.2 — 23/10/2026
+
+### Melhorias
+
+- Ícone de instalação dos aplicativos inclui a logo da Melodia Pet no canto superior esquerdo, na diagonal do check, com o tamanho aprovado.
+- Identidade visual dentro das telas permanece com os ícones e logos existentes.
+
+### Correções de bugs
+
+- Referências dos ícones no manifesto e no atalho Apple atualizadas para novos arquivos, evitando reutilizar o endereço da arte anterior em cache.
+
 ## v1.2.1 — 22/10/2026
 
 ### Melhorias

@@ -1,4 +1,4 @@
-/* MoveTrack v1.2.1 — interface de movimentação. */
+/* MoveTrack v1.2.2 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -207,6 +207,11 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+  {version:'1.2.2',improvements:[
+    'Ícone de instalação com logo da Melodia Pet no canto superior esquerdo, na diagonal do check.'
+  ],fixes:[
+    'Novas referências de ícones nos manifestos e atalhos Apple para atualizar a arte instalada.'
+  ]},
   {version:'1.2.1',improvements:[
     'Abas operacionais padronizadas como Paletes e Avulsos, com ícones distintos.',
     'Resumo preenche uma única linha quando os itens cabem na largura disponível; demais itens mantêm duas linhas por coluna.',

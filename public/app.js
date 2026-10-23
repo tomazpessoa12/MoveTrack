@@ -146,7 +146,7 @@ camera=async function(mode){
   }catch(error){close();const blocked=error?.name==='NotAllowedError'||error?.name==='SecurityError';msg(blocked?'A câmera foi bloqueada. Confirme a permissão do navegador e o acesso por HTTPS.':'Não foi possível abrir a câmera. Verifique se existe uma câmera disponível.',true)}
 };
 document.head.insertAdjacentHTML('beforeend','<style>.camera-modal video{width:100%;max-height:62vh;object-fit:cover;background:#001834;border-radius:.7rem}.camera-tools{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin:.8rem 0}.camera-zoom{display:flex;gap:.5rem;align-items:center;flex:1;min-width:180px;font-weight:600}.camera-zoom input{flex:1;accent-color:#ffcf3c}.camera-modal #camera-hint{margin-bottom:.4rem}</style>');
-const SYSTEM_VERSION='v1.2.1';
+const SYSTEM_VERSION='v1.2.2';
 layout=function(title,content){const f=state.feedback;state.feedback=null;const area=route==='/producao'?'production-area':route==='/logistica'?'logistics-area':'';const areaLabel=route==='/producao'?'PRODUÇÃO':route==='/logistica'?'LOGÍSTICA':'';app.innerHTML=`<div class="shell ${area}"><header class="top"><div class="brand-wrap"><img class="brand-logo" src="/melodia-logo.png" alt="Melodia Pet"><div><div class="brand-title">Controle de Movimentação</div><div class="small">${title}</div></div></div>${areaLabel?`<span class="area-label">${areaLabel}</span>`:''}</header><div id="message">${f?`<div class="notice ${f.error?'error':''}">${esc(f.text)}</div>`:''}</div>${content}</div><footer class="app-version">Controle de Movimentação Melodia Pet · ${SYSTEM_VERSION}</footer>`};
 camera=async function(mode){
   if(!window.isSecureContext)return msg('Para usar a câmera, acesse o sistema por HTTPS. O acesso atual não é seguro.',true);
