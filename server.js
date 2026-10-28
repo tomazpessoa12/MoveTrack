@@ -54,6 +54,13 @@ function tokenUser(req,data){
  if(session.expiresAt<=Date.now()||!user||session.credential!==credentialKey(user)){sessions.delete(key);saveSessions();return null}
  return user;
 }
+function sendLive(req,res,data,admin=false){
+ const snapshot={pallets:data.pallets,partials:data.partials||[],receipts:admin?data.receipts:undefined,summary:summary(data),productCatalog:data.products.filter(item=>item.active).map(({code,name})=>({code,name})),productLines:data.settings.productLines||[],defaultProductColor:data.settings.defaultProductColor||'#001834'};
+ const payload=JSON.stringify(snapshot),etag='"'+crypto.createHash('sha256').update(payload).digest('hex')+'"';
+ const headers={'ETag':etag,'Cache-Control':'private, no-cache','Vary':'Authorization','Content-Type':'application/json; charset=utf-8'};
+ if(req.headers['if-none-match']===etag){res.writeHead(304,headers);return res.end()}
+ res.writeHead(200,headers);res.end(payload);
+}
 function send(res, status, body) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(body)); }
 function body(req) { return new Promise((resolve, reject) => { let raw = ''; req.on('data', d => raw += d); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('JSON inválido')); } }); }); }
 function can(user, sectors) { return user && sectors.includes(user.sector); }
@@ -140,6 +147,7 @@ const server = http.createServer(async (req, res) => {
     }
     if(req.method==='POST'&&url.pathname==='/api/logout'){sessions.delete(sessionKey((req.headers.authorization||'').replace('Bearer ','')));saveSessions();return send(res,200,{ok:true})}
     if (req.method === 'POST' && url.pathname === '/api/reset-request') { const b = await body(req); const u = data.users.find(x => x.username.toLowerCase() === String(b.username || '').toLowerCase()); if (u) { data.resetRequests = data.resetRequests.filter(x => x.userId !== u.id); data.resetRequests.push({ id: crypto.randomUUID(), userId: u.id, requestedAt: now() }); writeData(data); } return send(res, 200, { ok: true }); }
+    if(req.method==='GET'&&url.pathname==='/api/public/live')return sendLive(req,res,data);
     if (req.method === 'GET' && url.pathname === '/api/public/bootstrap') return send(res, 200, { pallets: data.pallets, partials:data.partials||[], receipts: data.receipts, summary: summary(data), productCatalog: data.products.filter(item=>item.active).map(({code,name})=>({code,name})), productLines: data.settings.productLines || [], defaultProductColor: data.settings.defaultProductColor || '#001834' });
     if (req.method === 'POST' && url.pathname === '/api/public/register') {
       const b = await body(req); const p = parseCode(b.code); if (!p.id || !p.product || !p.op || !Number.isFinite(p.quantity) || p.quantity <= 0) throw new Error('Dados incompletos no QR.');
@@ -151,6 +159,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/public/cancel') { const b = await body(req); const p = data.pallets.find(x => x.id === b.id && x.status === 'PRONTO'); if (!p) return send(res, 404, { error: 'Palete pendente não encontrado.' }); p.status='CANCELADO';p.cancelledAt=now();p.cancelledBy='Produção';p.cancelReason=String(b.reason||'').trim();writeData(data);return send(res,200,{pallet:p}); }
     if (req.method === 'POST' && url.pathname === '/api/public/receipts') { const b=await body(req);const ids=[...new Set(b.ids||[])],partialIds=[...new Set(b.partialIds||[])];if((!ids.length&&!partialIds.length)||!b.signature)throw new Error('Inclua itens e assinatura.');const pallets=ids.map(id=>data.pallets.find(p=>p.id===id)),partials=partialIds.map(id=>(data.partials||[]).find(p=>p.id===id));if(pallets.some(p=>!p||p.status!=='PRONTO')||partials.some(p=>!p||p.status!=='PENDENTE'))throw new Error('Há item inexistente ou já recebido.');const receipt={id:crypto.randomUUID(),palletIds:ids,partialIds,receivedAt:now(),receivedBy:'Assinatura digital',observation:String(b.observation||'').trim(),signature:b.signature};pallets.forEach(p=>{p.status='RECEBIDO';p.receiptId=receipt.id});partials.forEach(p=>{p.status='RECEBIDO';p.receiptId=receipt.id});data.receipts.unshift(receipt);writeData(data);return send(res,201,{receipt}); }
     const user = tokenUser(req, data); if (!user) return send(res, 401, { error: 'Sessão expirada. Entre novamente.' });
+    if(req.method==='GET'&&url.pathname==='/api/live')return sendLive(req,res,data,true);
     if (req.method === 'GET' && url.pathname === '/api/bootstrap') return send(res, 200, { user: publicUser(user), pallets: data.pallets, partials:data.partials||[], receipts: data.receipts, summary: summary(data), products: can(user, ['Administrador']) ? data.products : undefined, settings: can(user, ['Administrador']) ? data.settings : undefined, users: can(user, ['Administrador']) ? data.users.map(publicUser) : undefined, resetRequests: can(user, ['Administrador']) ? data.resetRequests : undefined });
     if (req.method === 'POST' && url.pathname === '/api/admin/products') {
       if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' });
@@ -210,4 +219,5 @@ setInterval(async () => {
   if ((data.settings.discordDays||[]).includes(index) && `${get('hour')}:${get('minute')}` === data.settings.discordHour && data.settings.lastDiscordDigest !== day) { try { await sendDiscord(data); data.settings.lastDiscordDigest = day; writeData(data); } catch (e) { console.error('Discord:', e.message); } }
 }, 30000);
 server.listen(PORT, () => console.log(`MoveTrack em http://localhost:${PORT}`));
+
 

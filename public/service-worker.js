@@ -1,4 +1,4 @@
-const CACHE = 'movetrack-v1.3.0-release';
+const CACHE = 'movetrack-v1.4.0-release';
 const ASSETS = [
   '/', '/producao', '/logistica', '/admin', '/producao.html', '/logistica.html', '/admin.html', '/style.css', '/app.js', '/movetrack.css', '/movetrack.js', '/movetrack-mark.svg', '/movetrack-logo.svg', '/movetrack-logo-light.svg',
   '/vendor/jsQR.js', '/vendor/fontawesome-free-icons.js', '/melodia-logo.png', '/manifest.webmanifest', '/manifest-producao.webmanifest', '/manifest-logistica.webmanifest', '/manifest-admin.webmanifest',
@@ -16,4 +16,5 @@ self.addEventListener('fetch', event => {
     return response;
   }).catch(() => caches.match(event.request).then(cached => cached || caches.match('/producao'))));
 });
+
 

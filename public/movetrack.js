@@ -1,6 +1,6 @@
-/* MoveTrack v1.3.0 — interface de movimentação. */
+/* MoveTrack v1.4.0 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
-const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
+const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
 const mtCatalog = () => state.products || state.productCatalog || [];
 function mtProductCode(item) {
@@ -207,6 +207,13 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.4.0',improvements:[
+  'Atualização silenciosa dos dados a cada cinco minutos com a tela visível e ao retornar à aba, sem perder formulários, assinatura ou recebimento.',
+  'Menu do Admin separa Receber transferências e Receber avulsos, sem abas internas; ações de Produção com nomes padronizados e novos ícones de adicionar/receber avulsos.'
+ ],fixes:[
+  'Linhas de produto: cabeçalho único no desktop e três colunas iguais; no mobile, Nome, Texto identificador e Cor + Remover em três linhas.',
+  'Labels individuais deixam de se repetir no desktop. Seleções em andamento são preservadas nas atualizações automáticas.'
+ ]},
   {version:'1.3.0',improvements:[
     'Navegação mobile revisada: cabeçalho alinhado e menu lateral sobreposto, com fundo escurecido e fechamento por fora.',
     'Pendentes em três linhas; filtros, catálogo, configurações, assinatura e diálogos adaptados ao celular.',
@@ -269,7 +276,7 @@ admin=function(){
   mtSidebar();mtEnhancePublic();mtDecorateBatch();
   mtRenderChangelog();
 };
-const mtMenu=[['Administração',[['relatorio','Relatório','report'],['catalogo','Catálogo de produtos','catalog'],['configuracoes','Configurações','settings']]],['Produção',[['registrar','Registrar palete','register'],['pendentes','Pendentes','pending'],['avulso','Avulsos','partial']]],['Logística',[['receber','Receber transferências','receive']]]];
+const mtMenu=[['Administração',[['relatorio','Relatório','report'],['catalogo','Catálogo de produtos','catalog'],['configuracoes','Configurações','settings']]],['Produção',[['registrar','Registrar palete','register'],['pendentes','Paletes Pendentes','pending'],['avulso','Adicionar Avulsos','partial-add']]],['Logística',[['receber','Receber transferências','receive'],['receber-avulsos','Receber avulsos','partial-receive']]]];
 function mtSidebar(){
   const shell=app.querySelector('.shell'),nav=shell?.querySelector('.admin-nav');if(!nav)return;
   const page=document.createElement('div');page.className='mt-admin-layout';
@@ -446,14 +453,12 @@ const mtResponsiveLogistics=logistics;
 logistics=function(){mtResponsiveLogistics();if(state.logisticsView!=='avulsos')return;const card=document.querySelector('.shell>.card');if(card){card.outerHTML=mtAvulsoGroups();mtWireAvulsoGroups(logistics)}};
 const mtResponsiveAdmin=admin;
 admin=function(){
- mtCloseDrawer(false);mtResponsiveAdmin();const main=document.querySelector('.mt-admin-content');if(!main)return;
- if(state.adminView==='avulso'){main.innerHTML=mtProductionAvulsos(true);mtWireProductionAvulsos()}
- if(state.adminView==='receber'){
-  state.adminReceiveView=state.adminReceiveView||'paletes';const isAvulso=state.adminReceiveView==='avulsos';
-  const tabs=`<nav class="nav mt-receiving-tabs" aria-label="Recebimento"><button type="button" class="${!isAvulso?'active':''}" data-receive-tab="paletes">Paletes</button><button type="button" class="${isAvulso?'active':''}" data-receive-tab="avulsos">Avulsos</button></nav>`;
-  if(isAvulso){main.innerHTML=tabs+mtAvulsoGroups();mtWireAvulsoGroups(admin)}else main.insertAdjacentHTML('afterbegin',tabs);
-  main.querySelectorAll('[data-receive-tab]').forEach(button=>button.onclick=()=>{state.adminReceiveView=button.dataset.receiveTab;admin()});
- }
+ const requested=state.adminView;const avulsos=requested==='receber-avulsos';if(avulsos)state.adminView='receber';
+ mtCloseDrawer(false);mtResponsiveAdmin();state.adminView=requested;
+ const main=document.querySelector('.mt-admin-content');if(!main)return;
+ if(requested==='avulso'){main.innerHTML=mtProductionAvulsos(true);mtWireProductionAvulsos()}
+ if(avulsos){main.innerHTML=mtAvulsoGroups();mtWireAvulsoGroups(admin)}
+ document.querySelectorAll('[data-mt-view]').forEach(button=>{const active=button.dataset.mtView===requested;button.classList.toggle('active',active);button.setAttribute('aria-current',active?'page':'false')});
  mtResponsiveDecorate();
 };
 
@@ -468,4 +473,51 @@ betaWireReceipt=function(){
  observation?.addEventListener('input',snapshot);canvas.addEventListener('pointerup',snapshot);canvas.addEventListener('pointerleave',snapshot);document.querySelector('#clear')?.addEventListener('click',snapshot);
 };
 
+/* Silent operational updates: keep forms, drafts and canvases mounted. */
+const MT_LIVE_INTERVAL=5*60*1000;
+let mtLiveETag='',mtLiveInFlight=false,mtLiveLastAttempt=Date.now(),mtLiveEpoch=0,mtLivePending=null;
+const mtLiveMutationFetch=window.fetch.bind(window);
+window.fetch=async function(resource,options={}){
+ const mutation=String(resource).startsWith('/api/')&&(options.method||'GET').toUpperCase()!=='GET';
+ if(mutation){mtLiveEpoch++;mtLivePending=null;mtLiveETag=''}
+ try{return await mtLiveMutationFetch(resource,options)}finally{if(mutation)mtLiveEpoch++}
+};
+function mtApplyLive(){
+ if(!mtLivePending||document.visibilityState!=='visible'||document.querySelector('.modal,.mt-busy,.mt-mobile-open'))return;
+ const snapshot=mtLivePending;mtLivePending=null;
+ const liveKeys=['pallets','partials','receipts','summary','productCatalog','productLines','defaultProductColor'];
+ for(const key of liveKeys)if(key in snapshot)state[key]=snapshot[key];
+ const summaryElement=app.querySelector('.movement-summary');if(summaryElement)summaryElement.outerHTML=cards();
+ const pendingTable=app.querySelector('.mt-pending-table');if(pendingTable)pendingTable.outerHTML=table(state.pallets.filter(item=>item.status==='PRONTO'),true);
+ const productionAvulsos=route==='/producao'&&state.productionView==='avulsos'||route==='/admin'&&state.adminView==='avulso';
+ if(productionAvulsos){
+  const section=app.querySelector('.grid>.card.span-8');
+  if(section){const items=(state.partials||[]).filter(item=>item.status==='PENDENTE');section.innerHTML='<h2>Avulsos aguardando transferência</h2>'+(items.map(item=>mtAvulsoCard(item,'return')).join('')||'<p class="small">Nenhum avulso pendente.</p>');section.querySelectorAll('.return-partial').forEach(button=>button.onclick=()=>returnPartial(button.dataset.id))}
+ }
+ const groups=app.querySelector('.mt-avulso-groups');
+ if(groups){groups.outerHTML=mtAvulsoGroups();mtWireAvulsoGroups(route==='/admin'?admin:logistics)}
+ // Rebind only freshly rendered pending actions; other forms remain untouched.
+ pendingTable&&app.querySelectorAll('.mt-pending-table .cancel').forEach(button=>button.onclick=async()=>{try{await api('/public/cancel',{method:'POST',body:JSON.stringify({id:button.dataset.id})});state.feedback={text:'Palete cancelado com sucesso.'};load()}catch(error){msg(error.message,true)}});
+ mtResponsiveDecorate();mtEnhanceButtons();mtWatchSummaries();
+}
+async function mtRefreshLive(){
+ if(document.visibilityState!=='visible'||mtLiveInFlight||mtBusyCount>0||route==='/admin'&&!state.token)return;
+ mtLiveInFlight=true;mtLiveLastAttempt=Date.now();const epoch=mtLiveEpoch,token=state.token;
+ try{
+  const response=await fetch(route==='/admin'?'/api/live':'/api/public/live',{headers:{...(route==='/admin'?{Authorization:'Bearer '+token}:{}),...(mtLiveETag?{'If-None-Match':mtLiveETag}:{})},cache:'no-store'});
+  if(epoch!==mtLiveEpoch||token!==state.token)return;
+  if(response.status===401&&route==='/admin'){sessionStorage.removeItem('adminToken');localStorage.removeItem('adminToken');state.token='';mtLiveETag='';mtLivePending=null;mtCloseDrawer(false);adminLogin();msg('Sessão expirada. Entre novamente.',true);return}
+  if(response.status===304){mtApplyLive();return}
+  if(!response.ok)return;
+  const snapshot=await response.json();if(epoch!==mtLiveEpoch||token!==state.token)return;
+  mtLiveETag=response.headers.get('ETag')||'';mtLivePending=snapshot;mtApplyLive();
+ }catch{/* Temporary network failures do not clear sessions or interrupt work. */}
+ finally{mtLiveInFlight=false}
+}
+setInterval(mtRefreshLive,MT_LIVE_INTERVAL);
+const mtLiveResume=()=>{if(document.visibilityState==='visible'&&Date.now()-mtLiveLastAttempt>15000)mtRefreshLive();else mtApplyLive()};
+document.addEventListener('visibilitychange',mtLiveResume);window.addEventListener('focus',mtLiveResume);
+new MutationObserver(()=>{if(mtLivePending)mtApplyLive()}).observe(document.body,{childList:true,subtree:true});
+
 load();
+

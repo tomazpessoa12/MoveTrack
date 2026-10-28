@@ -554,3 +554,32 @@ button.mt-iconized:has(>.mt-button-icon){display:inline-flex;align-items:center;
 }
 
 #app .mt-avulso-copy strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+
+
+/* Product-line layout: desktop thirds, responsive stacked rows. */
+#app .config-line-header{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0 12px 6px;font-size:11px;color:#728194}
+#app .config-line{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:center;padding:12px;margin:8px 0}
+#app .mt-line-field{display:block;min-width:0}
+#app .mt-line-field>input{width:100%;min-width:0;margin:0}
+#app .config-line .mt-responsive-field-label{display:none}
+#app .mt-line-color-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+#app .mt-line-color-actions .color-field{display:flex;gap:6px;min-width:0;align-items:center;flex:none}
+#app .mt-line-color-actions input[type=color]{width:34px;height:38px;flex:none}
+#app .mt-line-color-actions .hex-input{width:82px!important;min-width:0;padding:8px 6px;font-size:12px}
+#app .mt-line-color-actions .line-remove{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 10px!important;gap:0;font-size:11px;width:auto;grid-column:auto;white-space:nowrap;flex:none}
+#app .mt-line-color-actions .line-remove .mt-button-icon{width:12px;height:12px;margin-right:5px}
+#app .mt-menu-item span{font-size:12px}
+@media(max-width:650px),(min-width:651px) and (max-width:1100px) and (orientation:portrait){
+ #app .config-line-header{display:none}
+ #app .config-line{grid-template-columns:minmax(0,1fr)!important;gap:12px;padding:12px}
+ #app .config-line .mt-responsive-field-label{display:block;margin:0 0 5px;font-size:12px;font-weight:500;line-height:1.4;color:var(--role-text)}
+ #app .mt-line-color-actions{justify-content:space-between}
+ #app .mt-line-color-actions .line-remove{width:auto;grid-column:auto;min-height:40px}
+}
+@media(min-width:651px) and (max-width:1150px) and (orientation:landscape){
+ #app .config-line,#app .config-line-header{gap:8px;padding-left:8px;padding-right:8px}
+ #app .mt-line-color-actions{gap:5px}#app .mt-line-color-actions .color-field{gap:4px}
+ #app .mt-line-color-actions .hex-input{width:70px!important;font-size:11px}
+ #app .mt-line-color-actions .line-remove{padding:8px 6px!important;font-size:10px}
+ #app .mt-line-color-actions .line-remove .mt-button-icon{margin-right:3px}
+}

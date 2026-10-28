@@ -2,6 +2,21 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.4.0 — 28/10/2026
+
+### Melhorias
+
+- Atualização silenciosa dos dados operacionais a cada cinco minutos enquanto a tela está visível e ao retornar à aba, sem recarregar a página.
+- Consultas condicionais com ETag: quando os dados não mudaram, o servidor responde sem reenviar o conteúdo.
+- Menu administrativo com Registrar palete, Paletes Pendentes e Adicionar Avulsos em Produção; Receber transferências e Receber avulsos em Logística, sem abas internas extras.
+- Adicionar Avulsos usa arrow-up-from-bracket; Receber avulsos usa uma adaptação invertida do mesmo ícone gratuito, formando o par visual de saída/entrada.
+
+### Correções de bugs
+
+- Linhas de produto no desktop exibem apenas um cabeçalho cinza e três colunas iguais: Nome, Texto identificador e Cor + Remover.
+- No mobile e tablet em retrato, os labels individuais continuam visíveis em três linhas: Nome, Texto identificador e Cor + Remover.
+- Atualizações preservam os campos em edição, observação, assinatura e seleções de recebimento; consultas em segundo plano não apagam o acesso por falha de rede.
+
 ## v1.3.0 — 27/10/2026
 
 ### Melhorias
@@ -231,4 +246,5 @@ Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas ne
 - As cores configuradas das linhas de produto agora são aplicadas também nas telas de Produção e Logística.
 - A ação **Aplicar** no relatório atualiza os dados mesmo quando o mesmo mês já está selecionado.
 - Controles do leitor de QR Code permanecem visíveis em telas menores.
+
 

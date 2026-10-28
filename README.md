@@ -9,7 +9,7 @@
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.3.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.4.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -107,3 +107,8 @@ O projeto foi estruturado para validar a rotina operacional. Em uma evolução f
 No celular e no tablet em retrato, o menu abre sobre o conteúdo e os pendentes são apresentados em cards. O tablet em paisagem segue a organização do desktop.
 
 A opção **Manter conectado** conserva a sessão por até 30 dias, inclusive após reiniciar o container. As sessões ficam em `sessions.json`, ao lado dos dados operacionais no volume privado `data/`, com apenas o hash do token. A senha não é armazenada no navegador. O botão **Sair** invalida a sessão no servidor. Sem marcar a opção, a sessão dura até 12 horas e não sobrevive ao reinício do servidor. Após esta atualização, entre uma vez e marque a opção para criar uma sessão persistente.
+
+
+## Atualização silenciosa
+
+Os dados operacionais são consultados a cada cinco minutos com a página visível e ao retornar à aba (com um intervalo mínimo de 15 segundos entre tentativas por foco). Novos paletes aparecem automaticamente nos pendentes na próxima consulta, sem F5. A navegação não recarrega a página nem substitui os formulários, a observação ou o canvas de assinatura. Consultas usam ETag para evitar reenviar dados sem alterações; uma falha de rede aguarda a próxima tentativa e mantém a sessão. O relatório continua respeitando o botão Aplicar e os filtros escolhidos.
