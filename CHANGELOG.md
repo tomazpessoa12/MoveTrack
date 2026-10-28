@@ -2,6 +2,25 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.3.0 — 27/10/2026
+
+### Melhorias
+
+- Interface mobile revisada nas três áreas, com cabeçalhos alinhados e menu administrativo sobreposto, animação, fundo escurecido e fechamento por fora ou Escape.
+- Pendentes organizados em três linhas: identificação; status, quantidade e OP; pronto em e cancelamento. Filtros, catálogo, configurações, assinatura e diálogos adaptados a telas pequenas.
+- Tablets em retrato seguem a organização mobile com proporções maiores; em paisagem seguem o desktop.
+- Cards de avulsos com miniatura do produto, nome/código/OP, quantidade destacada à esquerda e ação compacta à direita, sem tags repetidas. Mesmo padrão no desktop.
+- Containers separados e identificados por ícones para avulsos disponíveis e no recebimento; Retirar em vermelho.
+- Receber transferências no Admin ganha abas Paletes e Avulsos para montar o mesmo recebimento.
+
+### Correções de bugs
+
+- Avulsos do Admin limita-se à criação por QR/código manual e devolução ao palete de origem; seleção para recebimento fica na seção de Logística.
+- Manter conectado persiste por até 30 dias, inclusive após reiniciar o servidor. Sessões privadas armazenam somente hashes dos tokens e são invalidadas por expiração, troca de senha ou Sair.
+- Falhas de conexão não apagam o acesso salvo; rejeição de autenticação continua exigindo novo login.
+- Labels das linhas de produto preservados no mobile; pendentes e ações permanecem dentro dos containers.
+- Visual de desktop preservado fora das alterações aprovadas de avulsos e do acesso persistente.
+
 ## v1.2.2 — 23/10/2026
 
 ### Melhorias
@@ -212,3 +231,4 @@ Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas ne
 - As cores configuradas das linhas de produto agora são aplicadas também nas telas de Produção e Logística.
 - A ação **Aplicar** no relatório atualiza os dados mesmo quando o mesmo mês já está selecionado.
 - Controles do leitor de QR Code permanecem visíveis em telas menores.
+

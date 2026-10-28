@@ -10,3 +10,8 @@ caddy_config/
 node_modules/
 .env.*
 !.env.example
+
+
+# Sessões administrativas privadas
+/sessions.json
+/sessions.json.tmp

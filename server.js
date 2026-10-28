@@ -7,7 +7,23 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 const SETTINGS_FILE = path.join(path.dirname(DATA_FILE), 'settings.json');
 const PUBLIC = path.join(__dirname, 'public');
-const sessions = new Map();
+// Private session hashes are persisted alongside operational data, never in public assets.
+const SESSIONS_FILE = path.join(path.dirname(DATA_FILE), 'sessions.json');
+const sessionKey = token => crypto.createHash('sha256').update(token).digest('hex');
+const credentialKey = user => sessionKey(user.password.value);
+function readSessions(){
+  try{return new Map(Object.entries(JSON.parse(fs.readFileSync(SESSIONS_FILE,'utf8'))).filter(([,session])=>session.remember&&session.expiresAt>Date.now()))}
+  catch(error){if(error.code!=='ENOENT')throw error;return new Map()}
+}
+const sessions = readSessions();
+function saveSessions(){
+  const persistent={};
+  for(const [key,session] of sessions){if(session.expiresAt<=Date.now())sessions.delete(key);else if(session.remember)persistent[key]=session}
+  fs.mkdirSync(path.dirname(SESSIONS_FILE),{recursive:true});
+  const temporary=SESSIONS_FILE+'.tmp';
+  fs.writeFileSync(temporary,JSON.stringify(persistent),{mode:0o600});
+  fs.renameSync(temporary,SESSIONS_FILE);fs.chmodSync(SESSIONS_FILE,0o600);
+}
 const INITIAL_PRODUCTS = require('./catalog-seed.json').map(([code, name, brand, barcode]) => ({ code, name, brand, barcode, active: true }));
 
 function hash(password, salt = crypto.randomBytes(16).toString('hex')) {
@@ -31,7 +47,13 @@ function readSettingsBackup() { try { return normalizeSettings(JSON.parse(fs.rea
 function readData() { if (!fs.existsSync(DATA_FILE)) { const data = seed(); data.settings = readSettingsBackup() || data.settings; writeData(data); return data; } const data=JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));data.settings=normalizeSettings(data.settings||readSettingsBackup()||{});if(!Array.isArray(data.products))data.products=INITIAL_PRODUCTS.map(product=>({...product}));return data; }
 function writeData(data) { fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true }); fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(normalizeSettings(data.settings), null, 2)); }
 function publicUser(u) { return { id: u.id, name: u.name, sector: u.sector, username: u.username, active: u.active, forcePasswordChange: u.forcePasswordChange }; }
-function tokenUser(req, data) { const token = (req.headers.authorization || '').replace('Bearer ', ''); const session = sessions.get(token); if (!session) return null; return data.users.find(u => u.id === session.userId && u.active) || null; }
+function tokenUser(req,data){
+ const key=sessionKey((req.headers.authorization||'').replace('Bearer ','')),session=sessions.get(key);
+ if(!session)return null;
+ const user=data.users.find(u=>u.id===session.userId&&u.active);
+ if(session.expiresAt<=Date.now()||!user||session.credential!==credentialKey(user)){sessions.delete(key);saveSessions();return null}
+ return user;
+}
 function send(res, status, body) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(body)); }
 function body(req) { return new Promise((resolve, reject) => { let raw = ''; req.on('data', d => raw += d); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('JSON inválido')); } }); }); }
 function can(user, sectors) { return user && sectors.includes(user.sector); }
@@ -112,8 +134,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/login') {
       const b = await body(req); const user = data.users.find(u => u.username.toLowerCase() === String(b.username || '').toLowerCase() && u.active);
       if (!user || !matches(b.password || '', user.password)) return send(res, 401, { error: 'Usuário ou senha inválidos.' });
-      const token = crypto.randomBytes(24).toString('hex'); sessions.set(token, { userId: user.id }); return send(res, 200, { token, user: publicUser(user) });
+      const token=crypto.randomBytes(24).toString('hex'),remember=b.remember===true;
+      sessions.set(sessionKey(token),{userId:user.id,credential:credentialKey(user),remember,expiresAt:Date.now()+(remember?30*24:12)*60*60*1000});saveSessions();
+      return send(res,200,{token,user:publicUser(user)});
     }
+    if(req.method==='POST'&&url.pathname==='/api/logout'){sessions.delete(sessionKey((req.headers.authorization||'').replace('Bearer ','')));saveSessions();return send(res,200,{ok:true})}
     if (req.method === 'POST' && url.pathname === '/api/reset-request') { const b = await body(req); const u = data.users.find(x => x.username.toLowerCase() === String(b.username || '').toLowerCase()); if (u) { data.resetRequests = data.resetRequests.filter(x => x.userId !== u.id); data.resetRequests.push({ id: crypto.randomUUID(), userId: u.id, requestedAt: now() }); writeData(data); } return send(res, 200, { ok: true }); }
     if (req.method === 'GET' && url.pathname === '/api/public/bootstrap') return send(res, 200, { pallets: data.pallets, partials:data.partials||[], receipts: data.receipts, summary: summary(data), productCatalog: data.products.filter(item=>item.active).map(({code,name})=>({code,name})), productLines: data.settings.productLines || [], defaultProductColor: data.settings.defaultProductColor || '#001834' });
     if (req.method === 'POST' && url.pathname === '/api/public/register') {
@@ -185,3 +210,4 @@ setInterval(async () => {
   if ((data.settings.discordDays||[]).includes(index) && `${get('hour')}:${get('minute')}` === data.settings.discordHour && data.settings.lastDiscordDigest !== day) { try { await sendDiscord(data); data.settings.lastDiscordDigest = day; writeData(data); } catch (e) { console.error('Discord:', e.message); } }
 }, 30000);
 server.listen(PORT, () => console.log(`MoveTrack em http://localhost:${PORT}`));
+

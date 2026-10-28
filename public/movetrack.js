@@ -1,4 +1,4 @@
-/* MoveTrack v1.2.2 — interface de movimentação. */
+/* MoveTrack v1.3.0 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -207,6 +207,16 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+  {version:'1.3.0',improvements:[
+    'Navegação mobile revisada: cabeçalho alinhado e menu lateral sobreposto, com fundo escurecido e fechamento por fora.',
+    'Pendentes em três linhas; filtros, catálogo, configurações, assinatura e diálogos adaptados ao celular.',
+    'Avulsos com foto, quantidade destacada e ações compactas em todas as áreas, inclusive no desktop.',
+    'Recebimento com abas de paletes e avulsos no Admin e containers separados para disponíveis e selecionados.'
+  ],fixes:[
+    'Avulsos do Admin voltam a permitir apenas criar e devolver; inclusão no recebimento fica em Receber transferências.',
+    'Manter conectado persiste por até 30 dias, inclusive após reiniciar o servidor; falhas de rede não apagam o acesso.',
+    'Sair invalida a sessão no servidor; labels das linhas de produto permanecem visíveis no celular.'
+  ]},
   {version:'1.2.2',improvements:[
     'Ícone de instalação com logo da Melodia Pet no canto superior esquerdo, na diagonal do check.'
   ],fixes:[
@@ -377,5 +387,85 @@ function mtImportModal(){
   file.onchange=async()=>{try{rows=mtParseCSV(await file.files[0].text());if(!rows.length)throw Error('Arquivo sem produtos.');const existing=new Set((state.products||[]).map(item=>item.code));const additions=rows.filter(row=>!existing.has(Number(row.code))).length;preview.textContent=`${rows.length} produtos no arquivo · ${additions} novos · ${rows.length-additions} para atualizar.`;confirm.disabled=false}catch(error){rows=[];confirm.disabled=true;preview.textContent=error.message;msg(error.message,true)}};
   confirm.onclick=async()=>{try{const result=await api('/admin/products/import',{method:'POST',body:JSON.stringify({rows})});overlay.remove();state.feedback={text:`Cadastro importado: ${result.created} novos e ${result.updated} atualizados.`};await load()}catch(error){msg(error.message,true)}};
 }
+
+/* Mobile layout and shared avulso cards approved in the HTML previews. */
+const mtIsMobile=()=>matchMedia('(max-width:650px), (min-width:651px) and (max-width:1100px) and (orientation:portrait)').matches;
+let mtDrawerReturnFocus;
+const mtDrawerBackdrop=document.createElement('div');mtDrawerBackdrop.className='mt-responsive-backdrop';mtDrawerBackdrop.setAttribute('aria-hidden','true');document.body.append(mtDrawerBackdrop);
+function mtCloseDrawer(restoreFocus=true){
+ document.querySelector('.mt-admin-layout')?.classList.remove('mt-mobile-open');mtDrawerBackdrop.classList.remove('active');document.body.classList.remove('mt-responsive-drawer-open');document.querySelector('.mt-mobile-menu')?.setAttribute('aria-expanded','false');
+ const aside=document.querySelector('.mt-sidebar');aside?.removeAttribute('role');aside?.removeAttribute('aria-modal');if(mtIsMobile())aside?.setAttribute('inert','');if(restoreFocus)mtDrawerReturnFocus?.focus();
+}
+function mtOpenDrawer(){
+ mtDrawerReturnFocus=document.querySelector('.mt-mobile-menu');const aside=document.querySelector('.mt-sidebar');if(!aside)return;
+ aside.removeAttribute('inert');aside.setAttribute('role','dialog');aside.setAttribute('aria-modal','true');aside.setAttribute('aria-label','Menu de navegação');document.querySelector('.mt-admin-layout').classList.add('mt-mobile-open');mtDrawerBackdrop.classList.add('active');document.body.classList.add('mt-responsive-drawer-open');mtDrawerReturnFocus?.setAttribute('aria-expanded','true');aside.querySelector('.mt-responsive-drawer-close')?.focus();
+}
+mtDrawerBackdrop.onclick=()=>mtCloseDrawer();
+document.addEventListener('click',event=>{
+ if(!mtIsMobile())return;
+ if(event.target.closest('.mt-mobile-menu')){event.preventDefault();event.stopImmediatePropagation();document.body.classList.contains('mt-responsive-drawer-open')?mtCloseDrawer():mtOpenDrawer();return}
+ if(event.target.closest('.mt-responsive-drawer-close')){event.preventDefault();event.stopImmediatePropagation();mtCloseDrawer();return}
+ if(event.target.closest('[data-mt-view]'))mtCloseDrawer(false);
+},true);
+document.addEventListener('keydown',event=>{
+ if(!document.body.classList.contains('mt-responsive-drawer-open'))return;
+ if(event.key==='Escape'){event.preventDefault();mtCloseDrawer();return}
+ if(event.key==='Tab'){const buttons=[...document.querySelectorAll('.mt-sidebar button:not([disabled])')].filter(e=>e.offsetParent!==null),first=buttons[0],last=buttons.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
+});
+let mtMobileFieldId=0;
+function mtResponsiveDecorate(){
+ const top=document.querySelector('.shell .top');top?.classList.toggle('mt-responsive-admin-header',route==='/admin'&&mtIsMobile());
+ const menu=document.querySelector('.mt-mobile-menu');menu?.setAttribute('aria-expanded',String(document.body.classList.contains('mt-responsive-drawer-open')));menu?.setAttribute('aria-label','Abrir menu');
+ const aside=document.querySelector('.mt-sidebar');
+ if(aside){if(mtIsMobile()&&!document.body.classList.contains('mt-responsive-drawer-open'))aside.setAttribute('inert','');else aside.removeAttribute('inert');const head=aside.querySelector('.mt-sidebar-head');if(head&&!head.querySelector('.mt-responsive-drawer-close')){const close=document.createElement('button');close.type='button';close.className='mt-responsive-drawer-close';close.setAttribute('aria-label','Fechar menu');close.innerHTML=mtIcon('xmark');head.append(close)}}
+ document.querySelectorAll('.mt-pending-table').forEach(table=>{const labels=[...table.querySelectorAll('thead th')].map(e=>e.textContent.trim());table.querySelectorAll('tbody tr').forEach(row=>[...row.cells].forEach((cell,index)=>{const label=labels[index]||'';cell.dataset.label=label;if(/pronto/i.test(label))cell.classList.add('mt-responsive-date');if(cell.querySelector('.cancel'))cell.classList.add('mt-responsive-actions')}))});
+ document.querySelectorAll('.config-line').forEach(line=>{for(const [key,text]of [['name','Nome da linha'],['match','Texto identificador'],['color','Cor da linha']]){const input=line.querySelector(`[data-line="${key}"]`);if(!input||line.querySelector(`[data-mobile-label="${key}"]`))continue;if(!input.id)input.id=`mt-mobile-line-${++mtMobileFieldId}-${key}`;const label=document.createElement('label');label.className='mt-responsive-field-label';label.dataset.mobileLabel=key;label.htmlFor=input.id;label.textContent=text;(key==='color'?input.closest('.color-field'):input).before(label)}});
+}
+new MutationObserver(mtResponsiveDecorate).observe(app,{childList:true,subtree:true});
+window.addEventListener('resize',()=>{if(!mtIsMobile()){document.querySelector('.mt-sidebar')?.removeAttribute('inert');if(document.body.classList.contains('mt-responsive-drawer-open'))mtCloseDrawer()}mtResponsiveDecorate()});
+function mtAvulsoCard(item,action){
+ const details=mtProductDetails(item),label=action==='return'?'Devolver':action==='remove'?'Retirar':'Adicionar',classes=action==='return'?'return-partial':action==='remove'?'av-remove mt-avulso-remove':'av-add mt-avulso-add';
+ return `<article class="mt-avulso-card"><div class="mt-avulso-info">${mtProductImage({...item,productCode:details.code})}<div class="mt-avulso-copy"><strong>${esc(details.name)}</strong><small>Cód: ${esc(details.code??'—')} · OP ${esc(mtOpNumber(item.op))}</small></div></div><div class="mt-avulso-footer"><span class="mt-avulso-quantity" aria-label="${fmt(item.quantity)} unidades"><strong>${fmt(item.quantity)}</strong><span>unidades</span></span><button type="button" class="secondary ${classes}" data-id="${esc(item.id)}" aria-label="${label} · ${esc(details.name)}">${label}</button></div></article>`;
+}
+function mtAvulsoGroups(){
+ const pending=(state.partials||[]).filter(item=>item.status==='PENDENTE'),selected=new Set(state.batchPartials||[]),chosen=pending.filter(item=>selected.has(item.id)),available=pending.filter(item=>!selected.has(item.id));
+ const group=(items,inBatch)=>`<section class="mt-avulso-group ${inBatch?'mt-selected-group':'mt-available-group'}"><h3 class="mt-avulso-group-title">${mtIcon(inBatch?'truck':'box-open')}<span>${inBatch?'No recebimento':'Disponíveis'}</span><span class="mt-avulso-group-count">${items.length}</span></h3>${items.map(item=>mtAvulsoCard(item,inBatch?'remove':'add')).join('')||`<p class="small">${inBatch?'Nenhum avulso adicionado ao recebimento.':'Nenhum avulso disponível.'}</p>`}</section>`;
+ return `<section class="card mt-avulso-groups"><h2>Avulsos para recebimento</h2><p class="small">Adicione ou retire avulsos deste recebimento. A assinatura e a leitura dos paletes ficam na aba Paletes.</p>${group(chosen,true)}${group(available,false)}</section>`;
+}
+function mtWireAvulsoGroups(render){
+ document.querySelectorAll('.av-add,.av-remove').forEach(button=>button.onclick=()=>{const selected=new Set(state.batchPartials||[]);button.matches('.av-add')?selected.add(button.dataset.id):selected.delete(button.dataset.id);state.batchPartials=[...selected];state.feedback={text:button.matches('.av-add')?'Avulso adicionado ao recebimento.':'Avulso retirado do recebimento.'};render()});
+}
+function mtProductionAvulsos(manual=false){
+ const items=(state.partials||[]).filter(item=>item.status==='PENDENTE');
+ return `<div class="grid"><section class="card span-4"><h2>Adicionar avulso</h2><p class="small">Leia o QR Code do palete de origem e informe a quantidade.</p><div class="scanner"><button type="button" class="accent camera" data-mode="partial">Ler QR Code</button>${manual?'<details><summary class="small">Inserir código manualmente</summary><form id="partial-form" class="form"><label>Texto do QR Code<input name="code" placeholder="Cole o texto do QR Code do palete" required></label><button type="submit">Continuar</button></form></details>':''}</div></section><section class="card span-8"><h2>Avulsos aguardando transferência</h2>${items.map(item=>mtAvulsoCard(item,'return')).join('')||'<p class="small">Nenhum avulso pendente.</p>'}</section></div>`;
+}
+function mtWireProductionAvulsos(){bindPublic();const form=document.querySelector('#partial-form');if(form)form.onsubmit=event=>{event.preventDefault();partialCode(new FormData(form).get('code'))};document.querySelectorAll('.return-partial').forEach(button=>button.onclick=()=>returnPartial(button.dataset.id))}
+const mtResponsiveProduction=production;
+production=function(){mtResponsiveProduction();if(state.productionView!=='avulsos')return;const grid=document.querySelector('.shell>.grid');if(grid){grid.outerHTML=mtProductionAvulsos();mtWireProductionAvulsos()}};
+const mtResponsiveLogistics=logistics;
+logistics=function(){mtResponsiveLogistics();if(state.logisticsView!=='avulsos')return;const card=document.querySelector('.shell>.card');if(card){card.outerHTML=mtAvulsoGroups();mtWireAvulsoGroups(logistics)}};
+const mtResponsiveAdmin=admin;
+admin=function(){
+ mtCloseDrawer(false);mtResponsiveAdmin();const main=document.querySelector('.mt-admin-content');if(!main)return;
+ if(state.adminView==='avulso'){main.innerHTML=mtProductionAvulsos(true);mtWireProductionAvulsos()}
+ if(state.adminView==='receber'){
+  state.adminReceiveView=state.adminReceiveView||'paletes';const isAvulso=state.adminReceiveView==='avulsos';
+  const tabs=`<nav class="nav mt-receiving-tabs" aria-label="Recebimento"><button type="button" class="${!isAvulso?'active':''}" data-receive-tab="paletes">Paletes</button><button type="button" class="${isAvulso?'active':''}" data-receive-tab="avulsos">Avulsos</button></nav>`;
+  if(isAvulso){main.innerHTML=tabs+mtAvulsoGroups();mtWireAvulsoGroups(admin)}else main.insertAdjacentHTML('afterbegin',tabs);
+  main.querySelectorAll('[data-receive-tab]').forEach(button=>button.onclick=()=>{state.adminReceiveView=button.dataset.receiveTab;admin()});
+ }
+ mtResponsiveDecorate();
+};
+
+// Preserve the receipt being assembled when switching between Paletes and Avulsos.
+const mtWireReceiptDraft=betaWireReceipt;
+betaWireReceipt=function(){
+ mtWireReceiptDraft();
+ const canvas=document.querySelector('#signature'),observation=document.querySelector('#observation');if(!canvas)return;
+ const snapshot=()=>{state.receiptDraft={observation:observation?.value||'',signature:canvas.dataset.signed?canvas.toDataURL():null}};
+ const draft=state.receiptDraft;
+ if(draft){if(observation)observation.value=draft.observation;const confirm=document.querySelector('#confirm');if(draft.signature){canvas.dataset.signed='1';const image=new Image();image.onload=()=>{if(canvas.isConnected)canvas.getContext('2d').drawImage(image,0,0)};image.src=draft.signature;if(confirm)confirm.disabled=!((state.batch||[]).length+(state.batchPartials||[]).length)}}
+ observation?.addEventListener('input',snapshot);canvas.addEventListener('pointerup',snapshot);canvas.addEventListener('pointerleave',snapshot);document.querySelector('#clear')?.addEventListener('click',snapshot);
+};
 
 load();
