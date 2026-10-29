@@ -1,6 +1,6 @@
 {
   "name": "movetrack",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "MoveTrack — gestão de movimentações entre produção e logística",
   "scripts": {
@@ -11,3 +11,4 @@
     "pdfkit": "0.17.2"
   }
 }
+

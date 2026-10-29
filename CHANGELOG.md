@@ -2,6 +2,16 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.5.1 — 29/10/2026
+
+### Melhorias
+
+- Contador de paletes pendentes ao lado do título, no canto superior direito do card, no Admin e na Produção, em desktop, celular e tablet.
+
+### Correções de bugs
+
+- Contador acompanha as alterações da lista e a atualização silenciosa, incluindo o estado com zero pendentes.
+
 ## v1.5.0 — 29/10/2026
 
 ### Melhorias
@@ -263,6 +273,7 @@ Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas ne
 - As cores configuradas das linhas de produto agora são aplicadas também nas telas de Produção e Logística.
 - A ação **Aplicar** no relatório atualiza os dados mesmo quando o mesmo mês já está selecionado.
 - Controles do leitor de QR Code permanecem visíveis em telas menores.
+
 
 
 

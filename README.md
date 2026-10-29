@@ -9,7 +9,7 @@
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.5.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.5.1` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -131,3 +131,4 @@ A imagem Docker instala as dependências fixadas no `package-lock.json` por `npm
 ## Verificação
 
 Após instalar as dependências com `npm ci`, execute `npm test`. Os testes cobrem identificação por código e recuperação dos registros, filtros do relatório e virada do mês no fuso local, geração de PDF, agenda mensal, confirmação de anexo e controle de repetição/retry com Discord simulado.
+

@@ -1,4 +1,4 @@
-/* MoveTrack v1.5.0 — interface de movimentação. */
+/* MoveTrack v1.5.1 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -202,6 +202,11 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.5.1',improvements:[
+  'Contador de paletes pendentes no canto superior direito do card, junto ao título, no Admin e na Produção.'
+ ],fixes:[
+  'Contador acompanha registros, cancelamentos, recebimentos e atualização silenciosa, inclusive quando não há pendentes.'
+ ]},
  {version:'1.5.0',improvements:[
   'Relatório mensal em PDF enviado pelo webhook configurado, com opção Sim/Não, dia e horário nas configurações.',
   'PDF com paginação PÁG X DE Y, data de geração, versão e os filtros escolhidos.'
@@ -422,7 +427,16 @@ document.addEventListener('keydown',event=>{
  if(event.key==='Tab'){const buttons=[...document.querySelectorAll('.mt-sidebar button:not([disabled])')].filter(e=>e.offsetParent!==null),first=buttons[0],last=buttons.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
 });
 let mtMobileFieldId=0;
+function mtPendingCounter(){
+ const table=app.querySelector('.mt-pending-table'),heading=table?.closest('.card')?.querySelector('h2');if(!heading)return;
+ heading.classList.add('mt-pending-heading');let counter=heading.querySelector('.mt-pending-count');
+ if(!counter){counter=document.createElement('span');counter.className='mt-pending-count';counter.setAttribute('role','status');counter.setAttribute('aria-live','polite');heading.append(counter)}
+ const count=(state.pallets||[]).filter(item=>item.status==='PRONTO').length,value=fmt(count);
+ if(counter.textContent!==value)counter.textContent=value;
+ counter.setAttribute('aria-label',`${value} palete${count===1?'':'s'} pendente${count===1?'':'s'}`);
+}
 function mtResponsiveDecorate(){
+ mtPendingCounter();
  const top=document.querySelector('.shell .top');top?.classList.toggle('mt-responsive-admin-header',route==='/admin'&&mtIsMobile());
  const menu=document.querySelector('.mt-mobile-menu');menu?.setAttribute('aria-expanded',String(document.body.classList.contains('mt-responsive-drawer-open')));menu?.setAttribute('aria-label','Abrir menu');
  const aside=document.querySelector('.mt-sidebar');
@@ -527,5 +541,6 @@ const mtCodeDecorateBatch=mtDecorateBatch;
 mtDecorateBatch=function(){mtCodeDecorateBatch();const list=app.querySelector('.card.span-7 .scanlist');if(!list)return;const chosen=(state.batch||[]).map(id=>(state.pallets||[]).find(item=>item.id===id&&item.status==='PRONTO')).filter(Boolean);list.querySelectorAll(':scope>li').forEach((row,index)=>{const item=chosen[index];if(!item)return;const details=mtProductDetails(item),button=row.querySelector('button');row.replaceChildren();row.insertAdjacentHTML('beforeend',mtProductImage({...item,productCode:details.code})+`<span><strong>${esc(details.name)}</strong><small class="small" style="display:block">Cód: ${details.code??'—'} · OP ${esc(mtOpNumber(item.op))} · ${fmt(item.quantity)} un.</small></span>`);if(button)row.append(button)})};
 
 load();
+
 
 
