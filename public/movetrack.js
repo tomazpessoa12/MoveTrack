@@ -1,29 +1,24 @@
-/* MoveTrack v1.4.0 — interface de movimentação. */
+/* MoveTrack v1.5.0 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
 const mtCatalog = () => state.products || state.productCatalog || [];
-function mtProductCode(item) {
-  const explicit=Number(item.productCode);
-  if (Number.isSafeInteger(explicit) && explicit>0) return explicit;
-  const label=String(item.product||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-  const matches=mtCatalog().filter(p=>{
-    const name=p.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-    return name===label || new RegExp(`(^|\\D)${p.code}(\\D|$)`).test(label);
-  });
-  return matches.length===1?matches[0].code:null;
+function mtProductCode(item){
+ const idCode=value=>{const match=String(value||'').match(/^([1-9]\d*)-\d{6}-\d{2}:\d{2}:\d{2}-\d+(?:::cancelled::.*)?$/);return match?Number(match[1]):null};
+ const code=idCode(item.originalQrId)||idCode(item.id)||idCode(item.sourcePalletId)||Number(item.productCode??item.codprod);
+ return Number.isSafeInteger(code)&&code>0?code:null;
 }
 function mtProductImage(item) {
   const code=mtProductCode(item);
   return code?`<span class="mt-product-image"><img src="https://nnpessoa.agilecdn.com.br/${code}.jpg" alt="" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden aria-label="Imagem indisponível">${mtIcon('image')}</span></span>`:`<span class="mt-product-image mt-image-missing" aria-label="Imagem indisponível">${mtIcon('image')}</span>`;
 }
 function mtProductDetails(item){
-  const same=(state.pallets||[]).concat(state.partials||[]).find(source=>source.product===item.product && source.productCode);
-  const code=mtProductCode(item)||(same?mtProductCode(same):null);
-  const known=mtCatalog().find(product=>product.code===code);
-  const name=known?.name||String(item.product||'').replace(code?new RegExp(`^\\s*${code}\\s*[-·:]?\\s+`):/^$/, '');
-  return {code,name};
+ const source=(state.pallets||[]).find(pallet=>pallet.id===item.sourcePalletId);
+ const code=mtProductCode(item)||(source?mtProductCode(source):null);
+ const known=mtCatalog().find(product=>Number(product.code)===code);
+ return{code,name:known?.name||String(item.product||'')};
 }
+
 function mtSummaryCard(item){
   const {code,name}=mtProductDetails(item);
   return `<div class="line-product" style="--line:${productLine(name).color}"><strong>${esc(name)}</strong><small>Cód: ${code??'—'} - ${fmt(item.quantity)} unidades</small></div>`;
@@ -207,6 +202,13 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.5.0',improvements:[
+  'Relatório mensal em PDF enviado pelo webhook configurado, com opção Sim/Não, dia e horário nas configurações.',
+  'PDF com paginação PÁG X DE Y, data de geração, versão e os filtros escolhidos.'
+ ],fixes:[
+  'Produtos identificados pelo código do QR, sem comparar nomes. Nome do cadastro quando disponível; nome do QR nos demais casos.',
+  'Código e foto disponíveis mesmo sem cadastro; associação recuperada nos paletes e avulsos antigos sem alterar saldos.'
+ ]},
  {version:'1.4.0',improvements:[
   'Atualização silenciosa dos dados a cada cinco minutos com a tela visível e ao retornar à aba, sem perder formulários, assinatura ou recebimento.',
   'Menu do Admin separa Receber transferências e Receber avulsos, sem abas internas; ações de Produção com nomes padronizados e novos ícones de adicionar/receber avulsos.'
@@ -519,5 +521,11 @@ const mtLiveResume=()=>{if(document.visibilityState==='visible'&&Date.now()-mtLi
 document.addEventListener('visibilitychange',mtLiveResume);window.addEventListener('focus',mtLiveResume);
 new MutationObserver(()=>{if(mtLivePending)mtApplyLive()}).observe(document.body,{childList:true,subtree:true});
 
+const mtCodeReportGroups=reportGroups;
+reportGroups=function(){return mtCodeReportGroups().map(receipt=>({...receipt,pallets:receipt.pallets.map(item=>({...item,product:mtProductDetails(item).name})),partials:receipt.partials.map(item=>({...item,product:mtProductDetails(item).name}))}))};
+const mtCodeDecorateBatch=mtDecorateBatch;
+mtDecorateBatch=function(){mtCodeDecorateBatch();const list=app.querySelector('.card.span-7 .scanlist');if(!list)return;const chosen=(state.batch||[]).map(id=>(state.pallets||[]).find(item=>item.id===id&&item.status==='PRONTO')).filter(Boolean);list.querySelectorAll(':scope>li').forEach((row,index)=>{const item=chosen[index];if(!item)return;const details=mtProductDetails(item),button=row.querySelector('button');row.replaceChildren();row.insertAdjacentHTML('beforeend',mtProductImage({...item,productCode:details.code})+`<span><strong>${esc(details.name)}</strong><small class="small" style="display:block">Cód: ${details.code??'—'} · OP ${esc(mtOpNumber(item.op))} · ${fmt(item.quantity)} un.</small></span>`);if(button)row.append(button)})};
+
 load();
+
 

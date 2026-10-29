@@ -2,6 +2,23 @@
 
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
+## v1.5.0 — 29/10/2026
+
+### Melhorias
+
+- Configurações do Discord organizadas em webhook compartilhado, Envio resumo diário e Envio relatório mensal.
+- Relatório mensal com opção Sim/Não, dia de 1 a 31 e horário de Brasília. Padrão: dia 1 às 07:00, com início na próxima ocorrência após ativar a configuração.
+- PDF gerado no servidor, disponível para abrir, salvar e imprimir pelo Admin, com PÁG X DE Y em todas as páginas, logo Melodia, data/hora e versão.
+- Envio automático do relatório completo do mês anterior pelo mesmo webhook, com confirmação de envio, controle privado dos meses enviados e nova tentativa após falha.
+
+### Correções de bugs
+
+- Identificação do produto usa o código do identificador do QR, sem comparação de nomes. Nome do catálogo quando o código existe; nome original do QR nos demais casos.
+- Código e tentativa de carregar a imagem continuam disponíveis para produtos sem cadastro.
+- Paletes e avulsos antigos recebem o código recuperado, preservando nomes originais do QR, saldos, OPs e recebimentos.
+- Resumos, pendentes, recebimento e relatórios usam o código para buscar o nome cadastrado. PDF e tela usam o mês no fuso de Recife/Brasília, inclusive na virada do mês.
+- Atualização do controle de envio diário não sobrescreve movimentações ocorridas durante o envio ao Discord.
+
 ## v1.4.0 — 28/10/2026
 
 ### Melhorias
@@ -246,5 +263,6 @@ Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas ne
 - As cores configuradas das linhas de produto agora são aplicadas também nas telas de Produção e Logística.
 - A ação **Aplicar** no relatório atualiza os dados mesmo quando o mesmo mês já está selecionado.
 - Controles do leitor de QR Code permanecem visíveis em telas menores.
+
 
 

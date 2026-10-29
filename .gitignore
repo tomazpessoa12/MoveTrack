@@ -15,3 +15,8 @@ node_modules/
 # Sessões administrativas privadas
 /sessions.json
 /sessions.json.tmp
+
+
+# Controle privado do envio mensal
+/monthly-reports.json
+/monthly-reports.json.tmp

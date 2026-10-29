@@ -583,3 +583,19 @@ button.mt-iconized:has(>.mt-button-icon){display:inline-flex;align-items:center;
  #app .mt-line-color-actions .line-remove{padding:8px 6px!important;font-size:10px}
  #app .mt-line-color-actions .line-remove .mt-button-icon{margin-right:3px}
 }
+
+.discord-shared-hint{font-size:12px;margin:8px 0 0;color:#61758d}
+.discord-subsection{border-top:1px solid #e1e7ee;margin-top:22px;padding-top:22px}
+.discord-subsection h4{margin:0 0 16px;color:#61758d;font-size:12px;font-weight:750;letter-spacing:.06em}
+#app .discord-subsection .discord-schedule{margin-top:0}
+.discord-monthly{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start}
+.discord-monthly>label{display:grid;gap:7px;font-size:14px;font-weight:400;min-width:0}
+.discord-monthly input,.discord-monthly select{height:44px;margin:0;min-width:0;width:100%;font:inherit}
+.discord-monthly select{appearance:none;padding-right:35px}
+.discord-monthly .select-wrap:after{content:'';position:absolute;right:15px;top:17px;width:7px;height:7px;border-right:2px solid #6a2e0a;border-bottom:2px solid #6a2e0a;transform:rotate(45deg);pointer-events:none}
+.discord-monthly .monthly-disabled{opacity:.52}
+.discord-monthly input:disabled{background:#eef1f5;cursor:not-allowed}
+@media(max-width:650px),(min-width:651px) and (max-width:1100px) and (orientation:portrait){
+ .discord-monthly{grid-template-columns:1fr 1fr;gap:15px 12px}
+ .discord-monthly>label:first-child{grid-column:1/-1}
+}

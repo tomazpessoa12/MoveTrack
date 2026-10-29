@@ -1,11 +1,13 @@
 {
   "name": "movetrack",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "MoveTrack — gestão de movimentações entre produção e logística",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pdfkit": "0.17.2"
   }
 }
-
-

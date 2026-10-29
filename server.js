@@ -2,6 +2,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const {productCode,productDetails,restoreProductCodes}=require('./product-code');
+const {monthlyPdf}=require('./reports');
+const {createMonthlyScheduler}=require('./monthly-report');
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
@@ -38,14 +41,23 @@ function seed() {
   if (!password) throw new Error('Defina ADMIN_PASSWORD antes de iniciar a aplicação.');
   return {
     users: [{ id: 'admin', name: 'Administrador', sector: 'Administrador', username: 'admin', password: hash(password), forcePasswordChange: false, active: true }],
-    pallets: [], partials: [], receipts: [], products: INITIAL_PRODUCTS, resetRequests: [], settings: { discordWebhook: '', discordHour: '18:00', discordDays: [1,2,3,4,5], lastDiscordDigest: '', defaultProductColor:'#001834', productLines: [{name:'BIOAVIS BITS',match:'BIOAVIS BITS',color:'#17341E'},{name:'BIOAVIS MIX',match:'BIOAVIS MIX',color:'#2E2B62'},{name:'M1X SEED',match:'M1X SEED',color:'#FFCD10'},{name:'HPRO',match:'HPRO',color:'#E2752A'},{name:'ZOOPRIME',match:'ZOOPRIME',color:'#2C2B26'}] }
+    pallets: [], partials: [], receipts: [], products: INITIAL_PRODUCTS, resetRequests: [], settings: { discordWebhook: '', discordHour: '18:00', discordDays: [1,2,3,4,5], lastDiscordDigest: '', monthlyReportEnabled:true, monthlyReportDay:1, monthlyReportHour:'07:00', monthlyReportEnabledAt:now(), defaultProductColor:'#001834', productLines: [{name:'BIOAVIS BITS',match:'BIOAVIS BITS',color:'#17341E'},{name:'BIOAVIS MIX',match:'BIOAVIS MIX',color:'#2E2B62'},{name:'M1X SEED',match:'M1X SEED',color:'#FFCD10'},{name:'HPRO',match:'HPRO',color:'#E2752A'},{name:'ZOOPRIME',match:'ZOOPRIME',color:'#2C2B26'}] }
   };
 }
 function defaultSettings() { return seed().settings; }
 function normalizeSettings(settings = {}) { const defaults = defaultSettings(); return { ...defaults, ...settings, productLines: settings.productLines || defaults.productLines, defaultProductColor: settings.defaultProductColor || defaults.defaultProductColor }; }
 function readSettingsBackup() { try { return normalizeSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); } catch { return null; } }
-function readData() { if (!fs.existsSync(DATA_FILE)) { const data = seed(); data.settings = readSettingsBackup() || data.settings; writeData(data); return data; } const data=JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));data.settings=normalizeSettings(data.settings||readSettingsBackup()||{});if(!Array.isArray(data.products))data.products=INITIAL_PRODUCTS.map(product=>({...product}));return data; }
+function readData() { if (!fs.existsSync(DATA_FILE)) { const data = seed(); data.settings = readSettingsBackup() || data.settings; writeData(data); return data; } const data=JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));const missingMonthlyStart=!data.settings?.monthlyReportEnabledAt;data.settings=normalizeSettings(data.settings||readSettingsBackup()||{});if(!Array.isArray(data.products))data.products=INITIAL_PRODUCTS.map(product=>({...product}));if(restoreProductCodes(data)||missingMonthlyStart)writeData(data);return data; }
 function writeData(data) { fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true }); fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(normalizeSettings(data.settings), null, 2)); }
+function monthlySettings(current,input){
+ if(input.monthlyReportEnabled===undefined)return{};
+ if(typeof input.monthlyReportEnabled!=='boolean')throw Error('Informe Sim ou Não para o relatório mensal.');
+ const day=Number(input.monthlyReportDay),hour=String(input.monthlyReportHour||'');
+ if(!Number.isInteger(day)||day<1||day>31)throw Error('Informe um dia de envio entre 1 e 31.');
+ if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(hour))throw Error('Informe o horário mensal no formato 24h (HH:MM).');
+ const changed=current.monthlyReportEnabled!==input.monthlyReportEnabled||Number(current.monthlyReportDay)!==day||current.monthlyReportHour!==hour;
+ return{monthlyReportEnabled:input.monthlyReportEnabled,monthlyReportDay:day,monthlyReportHour:hour,monthlyReportEnabledAt:changed?now():current.monthlyReportEnabledAt};
+}
 function publicUser(u) { return { id: u.id, name: u.name, sector: u.sector, username: u.username, active: u.active, forcePasswordChange: u.forcePasswordChange }; }
 function tokenUser(req,data){
  const key=sessionKey((req.headers.authorization||'').replace('Bearer ','')),session=sessions.get(key);
@@ -76,7 +88,7 @@ function allowReregister(data, id) {
   }
   return true;
 }
-function summary(data) { const items = pending(data), partials=(data.partials||[]).filter(p=>p.status==='PENDENTE'), products = {}; items.forEach(p => products[p.product] = (products[p.product] || 0) + Number(p.quantity)); partials.forEach(p=>products[p.product]=(products[p.product]||0)+Number(p.quantity)); return { pallets: items.length, partials:partials.length, products: Object.entries(products).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).map(([product, quantity]) => ({ product, quantity })) }; }
+function summary(data){const items=pending(data),partials=(data.partials||[]).filter(item=>item.status==='PENDENTE'),groups=new Map();for(const item of [...items,...partials]){const details=productDetails(data,item),key=details.code?'code:'+details.code:'name:'+details.name;const row=groups.get(key)||{product:details.name,productCode:details.code,quantity:0};row.quantity+=Number(item.quantity);groups.set(key,row)}return{pallets:items.length,partials:partials.length,products:[...groups.values()].sort((a,b)=>a.product.localeCompare(b.product,'pt-BR'))}}
 function digestText(data) { const s = summary(data); const lines = [`**Paletes aguardando transferência — ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Recife' }).format(new Date())}**`, `**Total: ${s.pallets} palete${s.pallets === 1 ? '' : 's'}**`]; s.products.forEach(x => lines.push(`- ${x.product}: ${Number(x.quantity).toLocaleString('pt-BR')} unidades`)); return lines.join('\n'); }
 async function sendDiscord(data) { if (!data.settings.discordWebhook) return; const result = await fetch(data.settings.discordWebhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: digestText(data) }) }); if (!result.ok) throw new Error('Webhook recusado pelo Discord'); }
 function parseCode(code) {
@@ -86,16 +98,8 @@ function parseCode(code) {
   if (parts.length === 4) return { id: parts[0], product: parts[1], op: parts[2], quantity: Number(parts[3]) };
   throw new Error('QR inválido. Use IDENTIFICADOR|PRODUTO|OP|QUANTIDADE.');
 }
-function catalogCode(data, pallet) {
-  const explicit = Number(pallet.productCode ?? pallet.codprod);
-  if (Number.isSafeInteger(explicit) && data.products.some(item => item.code === explicit)) return explicit;
-  const label = String(pallet.product || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-  const matches = data.products.filter(item => {
-    const name = item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-    return label === name || new RegExp(`(^|\\D)${item.code}(\\D|$)`).test(label);
-  });
-  return matches.length === 1 ? matches[0].code : null;
-}
+function catalogCode(data,pallet){return productCode(pallet)}
+
 function productInput(input) {
   const code = Number(input.code ?? input.CODPROD);
   const name = String(input.name ?? input.DESCRICAO ?? '').trim();
@@ -197,7 +201,7 @@ const server = http.createServer(async (req, res) => {
       if (!can(user, ['Produção', 'Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const p = parseCode(b.code);
       if (!p.id || !p.product || !p.op || !Number.isFinite(p.quantity) || p.quantity <= 0) throw new Error('Dados incompletos no QR.');
       if (!allowReregister(data,p.id)) return send(res, 409, { error: 'Palete já registrado.', pallet: data.pallets.find(x => x.id === p.id && x.status !== 'CANCELADO') });
-      const pallet = { ...p, status: 'PRONTO', readyAt: now(), readyBy: user.name }; data.pallets.unshift(pallet); writeData(data); return send(res, 201, { pallet });
+      const pallet = { ...p, productCode:catalogCode(data,p), status: 'PRONTO', readyAt: now(), readyBy: user.name }; data.pallets.unshift(pallet); writeData(data); return send(res, 201, { pallet });
     }
     if (req.method === 'POST' && url.pathname === '/api/pallets/cancel') {
       if (!can(user, ['Produção', 'Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const p = data.pallets.find(x => x.id === b.id && x.status === 'PRONTO'); if (!p) return send(res, 404, { error: 'Palete pendente não encontrado.' }); p.status = 'CANCELADO'; p.cancelledAt = now(); p.cancelledBy = user.name; p.cancelReason = String(b.reason||'').trim(); writeData(data); return send(res, 200, { pallet: p });
@@ -208,16 +212,28 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/password') { const b = await body(req); if (!b.password || b.password.length < 10) throw new Error('A senha deve ter ao menos 10 caracteres.'); user.password = hash(b.password); user.forcePasswordChange = false; writeData(data); return send(res, 200, { ok: true }); }
     if (req.method === 'POST' && url.pathname === '/api/admin/users') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); if (!b.name || !b.username || !b.password || !['Produção','Logística','Administrador'].includes(b.sector)) throw new Error('Preencha nome, usuário, setor e senha.'); if (data.users.some(x => x.username.toLowerCase() === b.username.toLowerCase())) throw new Error('Este usuário já existe.'); data.users.push({ id: crypto.randomUUID(), name: b.name, sector: b.sector, username: b.username, password: hash(b.password), forcePasswordChange: true, active: true }); writeData(data); return send(res, 201, { ok: true }); }
     if (req.method === 'POST' && url.pathname === '/api/admin/reset') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const target = data.users.find(x => x.id === b.userId); if (!target || !b.password || b.password.length < 10) throw new Error('Informe uma senha temporária de ao menos 10 caracteres.'); target.password = hash(b.password); target.forcePasswordChange = true; data.resetRequests = data.resetRequests.filter(x => x.userId !== target.id); writeData(data); return send(res, 200, { ok: true }); }
-    if (req.method === 'POST' && url.pathname === '/api/admin/settings') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(b.discordHour||''))) throw new Error('Informe o horário no formato 24h (HH:MM).'); data.settings.discordWebhook = String(b.discordWebhook || '').trim(); data.settings.discordHour = b.discordHour; data.settings.discordDays = (b.discordDays||[]).map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=6);data.settings.defaultProductColor=/^#[0-9a-f]{6}$/i.test(String(b.defaultProductColor||''))?String(b.defaultProductColor):'#001834';data.settings.productLines=(b.productLines||[]).map(x=>({name:String(x.name||'').trim(),match:String(x.match||'').trim(),color:/^#[0-9a-f]{6}$/i.test(String(x.color||''))?String(x.color):data.settings.defaultProductColor})).filter(x=>x.name&&x.match); writeData(data); return send(res, 200, { ok: true }); }
+    if(req.method==='POST'&&url.pathname==='/api/admin/report.pdf'){
+      if(!can(user,['Administrador']))return send(res,403,{error:'Sem permissão.'});
+      const options=await body(req),buffer=await monthlyPdf(data,{month:options.month,types:options.types,order:options.order});
+      res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`inline; filename="MoveTrack-Relatorio-${options.month}.pdf"`,'Cache-Control':'no-store'});return res.end(buffer);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/settings') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const monthly=monthlySettings(data.settings,b); if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(b.discordHour||''))) throw new Error('Informe o horário no formato 24h (HH:MM).'); Object.assign(data.settings,monthly);data.settings.discordWebhook = String(b.discordWebhook || '').trim(); data.settings.discordHour = b.discordHour; data.settings.discordDays = (b.discordDays||[]).map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=6);data.settings.defaultProductColor=/^#[0-9a-f]{6}$/i.test(String(b.defaultProductColor||''))?String(b.defaultProductColor):'#001834';data.settings.productLines=(b.productLines||[]).map(x=>({name:String(x.name||'').trim(),match:String(x.match||'').trim(),color:/^#[0-9a-f]{6}$/i.test(String(x.color||''))?String(x.color):data.settings.defaultProductColor})).filter(x=>x.name&&x.match); writeData(data); return send(res, 200, { ok: true }); }
     if (req.method === 'POST' && url.pathname === '/api/admin/test-discord') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); await sendDiscord(data); return send(res, 200, { ok: true }); }
     return send(res, 404, { error: 'Rota não encontrada.' });
   } catch (error) { return send(res, 400, { error: error.message || 'Não foi possível concluir a operação.' }); }
 });
 
+let dailyRunning=false;
+const monthlyScheduler=createMonthlyScheduler({readData,stateFile:path.join(path.dirname(DATA_FILE),'monthly-reports.json')});
+async function runMonthly(){try{await monthlyScheduler.tick()}catch{console.error('Discord: falha no envio do relatório mensal; nova tentativa em cinco minutos.')}}
+setInterval(runMonthly,30000);runMonthly();
 setInterval(async () => {
+  if(dailyRunning)return;dailyRunning=true;try{
   const data = readData(); const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Recife', weekday: 'short', hour: '2-digit', minute: '2-digit', year: 'numeric', month: '2-digit', day: '2-digit', hour12: false }).formatToParts(new Date()); const get = type => parts.find(p => p.type === type)?.value; const day = `${get('year')}-${get('month')}-${get('day')}`, index={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[get('weekday')];
-  if ((data.settings.discordDays||[]).includes(index) && `${get('hour')}:${get('minute')}` === data.settings.discordHour && data.settings.lastDiscordDigest !== day) { try { await sendDiscord(data); data.settings.lastDiscordDigest = day; writeData(data); } catch (e) { console.error('Discord:', e.message); } }
+  if ((data.settings.discordDays||[]).includes(index) && `${get('hour')}:${get('minute')}` === data.settings.discordHour && data.settings.lastDiscordDigest !== day) { try { await sendDiscord(data); const fresh=readData();fresh.settings.lastDiscordDigest=day;writeData(fresh); } catch (e) { console.error('Discord:', e.message); } }
+  }finally{dailyRunning=false}
 }, 30000);
 server.listen(PORT, () => console.log(`MoveTrack em http://localhost:${PORT}`));
+
 
 
