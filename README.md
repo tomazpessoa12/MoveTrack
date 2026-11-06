@@ -132,3 +132,7 @@ A imagem Docker instala as dependências fixadas no `package-lock.json` por `npm
 
 Após instalar as dependências com `npm ci`, execute `npm test`. Os testes cobrem identificação por código e recuperação dos registros, filtros do relatório e virada do mês no fuso local, geração de PDF, agenda mensal, confirmação de anexo e controle de repetição/retry com Discord simulado.
 
+
+### Paletes mistos
+
+Em Paletes pendentes, selecione **Mesclar paletes** e marque os registros que estão fisicamente no mesmo palete. O conjunto conta como um palete físico e pode ser expandido para consultar seus produtos. Para cancelar, retirar ou devolver avulsos de um item mesclado, primeiro desfaça a mesclagem. Na Logística, leia o QR Code de cada produto do conjunto: o recebimento só é confirmado quando todos estiverem incluídos. O resumo diário do Discord mostra a contagem física e detalha os conjuntos.

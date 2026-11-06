@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0
+
+### Melhorias
+- Mesclagem e separação de paletes mistos nos pendentes do Admin e da Produção, inclusive no celular e tablet.
+- Contagem física e detalhamento dos itens nos resumos, relatórios e mensagens do Discord.
+- Na Logística, cada QR do palete misto deve ser lido antes de confirmar o recebimento.
+
+### Correções
+- Operações sobre um item mesclado exigem desfazer a mesclagem para evitar inconsistências.
+
 Todas as alterações relevantes do MoveTrack da Melodia Pet são registradas neste arquivo.
 
 ## v1.5.1 — 29/10/2026

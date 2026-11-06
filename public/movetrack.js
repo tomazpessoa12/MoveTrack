@@ -1,4 +1,4 @@
-/* MoveTrack v1.5.1 — interface de movimentação. */
+/* MoveTrack v1.6.0 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -202,6 +202,7 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.6.0',improvements:['Paletes mistos no Admin e na Produção, com visualização dos produtos e mesclagem reversível.','Resumo do Discord e relatórios passam a contar paletes físicos.'],fixes:['Recebimento exige a leitura de todos os QR Codes de cada palete misto.']},
  {version:'1.5.1',improvements:[
   'Contador de paletes pendentes no canto superior direito do card, junto ao título, no Admin e na Produção.'
  ],fixes:[
@@ -431,7 +432,7 @@ function mtPendingCounter(){
  const table=app.querySelector('.mt-pending-table'),heading=table?.closest('.card')?.querySelector('h2');if(!heading)return;
  heading.classList.add('mt-pending-heading');let counter=heading.querySelector('.mt-pending-count');
  if(!counter){counter=document.createElement('span');counter.className='mt-pending-count';counter.setAttribute('role','status');counter.setAttribute('aria-live','polite');heading.append(counter)}
- const count=(state.pallets||[]).filter(item=>item.status==='PRONTO').length,value=fmt(count);
+ const count=mtPhysicalCount((state.pallets||[]).filter(item=>item.status==='PRONTO')),value=fmt(count);
  if(counter.textContent!==value)counter.textContent=value;
  counter.setAttribute('aria-label',`${value} palete${count===1?'':'s'} pendente${count===1?'':'s'}`);
 }
@@ -504,7 +505,7 @@ function mtApplyLive(){
  const liveKeys=['pallets','partials','receipts','summary','productCatalog','productLines','defaultProductColor'];
  for(const key of liveKeys)if(key in snapshot)state[key]=snapshot[key];
  const summaryElement=app.querySelector('.movement-summary');if(summaryElement)summaryElement.outerHTML=cards();
- const pendingTable=app.querySelector('.mt-pending-table');if(pendingTable)pendingTable.outerHTML=table(state.pallets.filter(item=>item.status==='PRONTO'),true);
+ const pendingTable=app.querySelector('.mt-pending-wrapper');if(pendingTable)pendingTable.outerHTML=table(state.pallets.filter(item=>item.status==='PRONTO'),true);
  const productionAvulsos=route==='/producao'&&state.productionView==='avulsos'||route==='/admin'&&state.adminView==='avulso';
  if(productionAvulsos){
   const section=app.querySelector('.grid>.card.span-8');
@@ -513,7 +514,7 @@ function mtApplyLive(){
  const groups=app.querySelector('.mt-avulso-groups');
  if(groups){groups.outerHTML=mtAvulsoGroups();mtWireAvulsoGroups(route==='/admin'?admin:logistics)}
  // Rebind only freshly rendered pending actions; other forms remain untouched.
- pendingTable&&app.querySelectorAll('.mt-pending-table .cancel').forEach(button=>button.onclick=async()=>{try{await api('/public/cancel',{method:'POST',body:JSON.stringify({id:button.dataset.id})});state.feedback={text:'Palete cancelado com sucesso.'};load()}catch(error){msg(error.message,true)}});
+ if(pendingTable)bindPublic();
  mtResponsiveDecorate();mtEnhanceButtons();mtWatchSummaries();
 }
 async function mtRefreshLive(){
@@ -538,7 +539,31 @@ new MutationObserver(()=>{if(mtLivePending)mtApplyLive()}).observe(document.body
 const mtCodeReportGroups=reportGroups;
 reportGroups=function(){return mtCodeReportGroups().map(receipt=>({...receipt,pallets:receipt.pallets.map(item=>({...item,product:mtProductDetails(item).name})),partials:receipt.partials.map(item=>({...item,product:mtProductDetails(item).name}))}))};
 const mtCodeDecorateBatch=mtDecorateBatch;
-mtDecorateBatch=function(){mtCodeDecorateBatch();const list=app.querySelector('.card.span-7 .scanlist');if(!list)return;const chosen=(state.batch||[]).map(id=>(state.pallets||[]).find(item=>item.id===id&&item.status==='PRONTO')).filter(Boolean);list.querySelectorAll(':scope>li').forEach((row,index)=>{const item=chosen[index];if(!item)return;const details=mtProductDetails(item),button=row.querySelector('button');row.replaceChildren();row.insertAdjacentHTML('beforeend',mtProductImage({...item,productCode:details.code})+`<span><strong>${esc(details.name)}</strong><small class="small" style="display:block">Cód: ${details.code??'—'} · OP ${esc(mtOpNumber(item.op))} · ${fmt(item.quantity)} un.</small></span>`);if(button)row.append(button)})};
+mtDecorateBatch=function(){mtCodeDecorateBatch();const list=app.querySelector('.card.span-7 .scanlist');if(!list)return;const selected=new Set(state.batch||[]),pendingGroups=new Map();for(const item of state.pallets||[]){if(item.status==='PRONTO'&&item.mixedPalletId&&selected.has(item.id))pendingGroups.set(item.mixedPalletId,(state.pallets||[]).filter(p=>p.status==='PRONTO'&&p.mixedPalletId===item.mixedPalletId&&!selected.has(p.id)).length)}let hint=list.parentElement.querySelector('.mt-mixed-scan-hint');if(pendingGroups.size){if(!hint){hint=document.createElement('p');hint.className='mt-mixed-scan-hint';list.after(hint)}const missing=[...pendingGroups.values()].reduce((a,b)=>a+b,0);hint.textContent=missing?`Palete misto: faltam ${missing} QR Code(s). Leia todos os produtos antes de confirmar.`:'Todos os QR Codes dos paletes mistos adicionados foram lidos.'}else hint?.remove();const chosen=(state.batch||[]).map(id=>(state.pallets||[]).find(item=>item.id===id&&item.status==='PRONTO')).filter(Boolean);list.querySelectorAll(':scope>li').forEach((row,index)=>{const item=chosen[index];if(!item)return;const details=mtProductDetails(item),button=row.querySelector('button');row.replaceChildren();row.insertAdjacentHTML('beforeend',mtProductImage({...item,productCode:details.code})+`<span><strong>${esc(details.name)}</strong><small class="small" style="display:block">Cód: ${details.code??'—'} · OP ${esc(mtOpNumber(item.op))} · ${fmt(item.quantity)} un.${item.mixedPalletId?' · Palete misto':''}</small></span>`);if(button)row.append(button)})};
+
+
+// Paletes mistos mantêm cada QR e registro original; o identificador agrupa o palete físico.
+let mtMerging=false,mtMergeSelection=new Set();
+const mtMixedBaseTable=table;
+table=function(items,cancel=false){
+ if(!cancel)return mtMixedBaseTable(items,false);
+ const singles=items.filter(p=>!p.mixedPalletId),groups=new Map();
+ for(const p of items)if(p.mixedPalletId){const a=groups.get(p.mixedPalletId)||[];a.push(p);groups.set(p.mixedPalletId,a)}
+ mtMergeSelection=new Set([...mtMergeSelection].filter(id=>singles.some(p=>p.id===id)));
+ const tpl=document.createElement('template');tpl.innerHTML=mtMixedBaseTable(singles,true);
+ if(mtMerging)tpl.content.querySelectorAll('tbody tr').forEach((row,i)=>{if(!singles[i])return;const cell=row.querySelector('td'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='mt-mix-check';checkbox.dataset.mixSelect=singles[i].id;checkbox.checked=mtMergeSelection.has(singles[i].id);checkbox.setAttribute('aria-label',`Selecionar ${mtProductDetails(singles[i]).name}, OP ${mtOpNumber(singles[i].op)}, ${fmt(singles[i].quantity)} unidades`);cell.prepend(checkbox)});
+ const mixed=[...groups.entries()].map(([id,parts])=>{const unique=[...new Map(parts.map(p=>{const d=mtProductDetails(p);return [d.code??d.name,p]})).values()],quantity=parts.reduce((n,p)=>n+Number(p.quantity),0);let itemTable=mtMixedBaseTable(parts,false).replace('<table>','<table class="mt-pending-table mt-mixed-items">');return `<details class="mt-mixed-card"><summary><span class="mt-mixed-photos">${unique.map(p=>mtProductImage(p)).join('')}</span><span class="mt-mixed-copy"><strong>Palete misto</strong><small><b>${unique.length}</b> produto${unique.length===1?'':'s'} diferente${unique.length===1?'':'s'} · <b>${fmt(quantity)}</b> unidades</small></span><span class="badge">PRONTO</span><span class="mt-mixed-arrow" aria-hidden="true">⌄</span></summary><div class="mt-mixed-body">${itemTable}<div class="mt-mixed-actions"><button type="button" class="secondary mt-unmerge" data-group="${esc(id)}">Desfazer mesclagem</button></div></div></details>`}).join('');
+ return `<div class="mt-pending-wrapper"><div class="mt-mix-toolbar"><button type="button" class="accent mt-mix-start" ${mtMerging?'hidden':''}>Mesclar paletes</button>${mtMerging?`<div class="mt-mix-select-info"><span><strong>Selecione os paletes que estão juntos fisicamente</strong><small>${mtMergeSelection.size} selecionado(s) · mínimo de 2</small></span><button type="button" class="secondary mt-mix-cancel">Voltar</button><button type="button" class="accent mt-mix-confirm" ${mtMergeSelection.size<2?'disabled':''}>Mesclar selecionados</button></div>`:''}</div><h3 class="mt-pending-subtitle">Paletes individuais <span>${singles.length}</span></h3>${tpl.innerHTML}<div class="mt-mixed-section"><h3 class="mt-pending-subtitle">Paletes mistos <span>${groups.size}</span></h3><p class="small">Paletes com produtos juntos. Toque para ver os itens.</p>${mixed||'<p class="small">Nenhum palete misto pendente.</p>'}</div></div>`;
+};
+function mtUpdatePendingView(){const wrapper=app.querySelector('.mt-pending-wrapper');if(!wrapper)return;wrapper.outerHTML=table((state.pallets||[]).filter(p=>p.status==='PRONTO'),true);bindPublic();mtResponsiveDecorate();mtEnhanceButtons()}
+app.addEventListener('change',event=>{const target=event.target;if(!target.matches('[data-mix-select]'))return;target.checked?mtMergeSelection.add(target.dataset.mixSelect):mtMergeSelection.delete(target.dataset.mixSelect);const info=app.querySelector('.mt-mix-select-info small'),button=app.querySelector('.mt-mix-confirm');if(info)info.textContent=`${mtMergeSelection.size} selecionado(s) · mínimo de 2`;if(button)button.disabled=mtMergeSelection.size<2});
+app.addEventListener('click',async event=>{
+ const button=event.target.closest('button');if(!button)return;
+ if(button.matches('.mt-mix-start')){mtMerging=true;mtMergeSelection.clear();mtUpdatePendingView();return}
+ if(button.matches('.mt-mix-cancel')){mtMerging=false;mtMergeSelection.clear();mtUpdatePendingView();return}
+ if(button.matches('.mt-mix-confirm')){if(mtMergeSelection.size<2)return;if(!await mtConfirmAction('Confirma que os paletes selecionados estão juntos fisicamente em um único palete?'))return;try{await api('/public/pallets/merge',{method:'POST',body:JSON.stringify({ids:[...mtMergeSelection]})});mtMerging=false;mtMergeSelection.clear();state.feedback={text:'Paletes mesclados com sucesso.'};await load()}catch(error){msg(error.message,true)}return}
+ if(button.matches('.mt-unmerge')){if(!await mtConfirmAction('Desfazer a mesclagem e voltar a listar os itens como paletes individuais?'))return;try{await api('/public/pallets/unmerge',{method:'POST',body:JSON.stringify({mixedPalletId:button.dataset.group})});state.feedback={text:'Mesclagem desfeita com sucesso.'};await load()}catch(error){msg(error.message,true)}}
+});
 
 load();
 

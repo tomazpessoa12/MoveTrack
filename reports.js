@@ -2,6 +2,7 @@ const PDFDocument=require('pdfkit');
 const path=require('path');
 const fs=require('fs');
 const {productDetails}=require('./product-code');
+const {physicalCount}=require('./mixed-pallets');
 const VERSION=require('./package.json').version;
 const ZONE='America/Recife';
 const number=n=>Number(n).toLocaleString('pt-BR');
@@ -16,8 +17,8 @@ function reportGroups(data,options){
  const groups=(data.receipts||[]).filter(receipt=>receiptMonth(receipt.receivedAt)===month).map(receipt=>({...receipt,pallets:types.includes('pallet')?findItems(receipt.palletIds||[],data.pallets||[]):[],partials:types.includes('avulso')?findItems(receipt.partialIds||[],data.partials||[]):[]})).filter(receipt=>receipt.pallets.length+receipt.partials.length);
  const units=receipt=>[...receipt.pallets,...receipt.partials].reduce((n,item)=>n+Number(item.quantity||0),0);
  const [key,direction]=order.split('-'),sign=direction==='desc'?-1:1;
- groups.sort((a,b)=>{const av=key==='date'?new Date(a.receivedAt).getTime():key==='pallets'?a.pallets.length:units(a),bv=key==='date'?new Date(b.receivedAt).getTime():key==='pallets'?b.pallets.length:units(b);return sign*(av-bv)||new Date(a.receivedAt)-new Date(b.receivedAt)||String(a.id).localeCompare(String(b.id))});
- return{month,groups,totals:{receipts:groups.length,pallets:groups.reduce((n,g)=>n+g.pallets.length,0),partials:groups.reduce((n,g)=>n+g.partials.length,0),units:groups.reduce((n,g)=>n+units(g),0)},units};
+ groups.sort((a,b)=>{const av=key==='date'?new Date(a.receivedAt).getTime():key==='pallets'?physicalCount(a.pallets):units(a),bv=key==='date'?new Date(b.receivedAt).getTime():key==='pallets'?physicalCount(b.pallets):units(b);return sign*(av-bv)||new Date(a.receivedAt)-new Date(b.receivedAt)||String(a.id).localeCompare(String(b.id))});
+ return{month,groups,totals:{receipts:groups.length,pallets:groups.reduce((n,g)=>n+physicalCount(g.pallets),0),partials:groups.reduce((n,g)=>n+g.partials.length,0),units:groups.reduce((n,g)=>n+units(g),0)},units};
 }
 function monthlyPdf(data,options={}){
  const report=reportGroups(data,options),generatedAt=options.generatedAt||new Date();
@@ -39,8 +40,8 @@ function monthlyPdf(data,options={}){
    text('DETALHAMENTO DOS RECEBIMENTOS',left,y,width,11,true);line(y+21);y+=35;
    const wrap=(value,w,size=9)=>{font(size);const result=[];for(const paragraph of String(value).split(/\r?\n/)){let current='';for(const word of paragraph.split(/\s+/).filter(Boolean)){if(doc.widthOfString((current?current+' ':'')+word)<=w){current+=(current?' ':'')+word;continue}if(current){result.push(current);current=''}let part='';for(const char of word){if(part&&doc.widthOfString(part+char)>w){result.push(part);part=''}part+=char}current=part}result.push(current)}return result};
    const listWidth=(width-28-24)/2,xs=[left+28,left+28+(width-28+24)/2];
-   const receiptHead=(receipt,index,continued=false)=>{doc.save().roundedRect(left,y,20,20,4).fill(ink).restore();font(9,true,'#ffffff');doc.text(String(index+1),left,y+5,{width:20,align:'center',lineBreak:false});text(`${stamp(receipt.receivedAt)} · ${receipt.pallets.length} paletes · ${number(report.units(receipt))} unidades${continued?' (continuação)':''}`,left+28,y+4,width-28,9,true);y+=32};
-   const columnHeads=receipt=>{text(`PALETES (${receipt.pallets.length})`,xs[0],y,listWidth,9,true);text(`AVULSOS (${receipt.partials.length})`,xs[1],y,listWidth,9,true);y+=19};
+   const receiptHead=(receipt,index,continued=false)=>{doc.save().roundedRect(left,y,20,20,4).fill(ink).restore();font(9,true,'#ffffff');doc.text(String(index+1),left,y+5,{width:20,align:'center',lineBreak:false});text(`${stamp(receipt.receivedAt)} · ${physicalCount(receipt.pallets)} paletes · ${number(report.units(receipt))} unidades${continued?' (continuação)':''}`,left+28,y+4,width-28,9,true);y+=32};
+   const columnHeads=receipt=>{text(`PALETES (${physicalCount(receipt.pallets)})`,xs[0],y,listWidth,9,true);text(`AVULSOS (${receipt.partials.length})`,xs[1],y,listWidth,9,true);y+=19};
    for(const [index,receipt] of report.groups.entries()){
     const rows=[receipt.pallets,receipt.partials].map(items=>items.length?[...items].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(item=>({lines:wrap(`${item.name} · ${number(item.quantity)} un.`,listWidth),code:item.code?`Cód: ${item.code}`:''})):[{lines:['Nenhum item.'],code:''}]);
     const rowHeight=row=>row.lines.length*12+(row.code?12:0)+8;
