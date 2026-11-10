@@ -1,4 +1,4 @@
-/* MoveTrack v1.6.0 — interface de movimentação. */
+/* MoveTrack v1.6.1 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -202,6 +202,7 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.6.1',improvements:['Documentação atualizada com o formato do resumo e a versão atual.'],fixes:['Resumo diário do Discord separa os paletes individuais, mistos e avulsos sem repetir quantidades.']},
  {version:'1.6.0',improvements:['Paletes mistos no Admin e na Produção, com visualização dos produtos e mesclagem reversível.','Resumo do Discord e relatórios passam a contar paletes físicos.'],fixes:['Recebimento exige a leitura de todos os QR Codes de cada palete misto.']},
  {version:'1.5.1',improvements:[
   'Contador de paletes pendentes no canto superior direito do card, junto ao título, no Admin e na Produção.'

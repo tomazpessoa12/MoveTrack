@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const {productCode,productDetails,restoreProductCodes}=require('./product-code');
 const {monthlyPdf}=require('./reports');
 const {physicalCount,mix,unmix,requireSeparate,checkReceipt}=require('./mixed-pallets');
+const {digestText}=require('./discord-digest');
 const {createMonthlyScheduler}=require('./monthly-report');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -90,7 +91,6 @@ function allowReregister(data, id) {
   return true;
 }
 function summary(data){const items=pending(data),partials=(data.partials||[]).filter(item=>item.status==='PENDENTE'),groups=new Map();for(const item of [...items,...partials]){const details=productDetails(data,item),key=details.code?'code:'+details.code:'name:'+details.name;const row=groups.get(key)||{product:details.name,productCode:details.code,quantity:0};row.quantity+=Number(item.quantity);groups.set(key,row)}return{pallets:physicalCount(items),partials:partials.length,products:[...groups.values()].sort((a,b)=>a.product.localeCompare(b.product,'pt-BR'))}}
-function digestText(data) { const s = summary(data); const lines = [`**Paletes aguardando transferência — ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Recife' }).format(new Date())}**`, `**Total: ${s.pallets} palete${s.pallets === 1 ? '' : 's'}**`]; s.products.forEach(x => lines.push(`- ${x.product}: ${Number(x.quantity).toLocaleString('pt-BR')} unidades`)); const groups=new Map();for(const p of pending(data)){if(p.mixedPalletId){const a=groups.get(p.mixedPalletId)||[];a.push(p);groups.set(p.mixedPalletId,a)}}if(groups.size){lines.push('',`**Paletes mistos: ${groups.size}**`);let n=0;for(const items of groups.values()){lines.push(`Palete misto ${++n} — ${items.reduce((sum,p)=>sum+Number(p.quantity),0).toLocaleString('pt-BR')} unidades`);for(const p of items)lines.push(`  • ${productDetails(data,p).name}: ${Number(p.quantity).toLocaleString('pt-BR')} unidades`);}} return lines.join('\n'); }
 async function sendDiscord(data) { if (!data.settings.discordWebhook) return; const result = await fetch(data.settings.discordWebhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: digestText(data) }) }); if (!result.ok) throw new Error('Webhook recusado pelo Discord'); }
 function parseCode(code) {
   const value = String(code || '').trim();

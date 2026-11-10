@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.1 — 09/11/2026
+
+### Correções de bugs
+
+- Resumo diário do Discord separa paletes individuais, paletes mistos e avulsos, sem repetir as mesmas quantidades.
+- README atualizado para refletir a versão e o formato atual da mensagem.
+
 ## 1.6.0
 
 ### Melhorias

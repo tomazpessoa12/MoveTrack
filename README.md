@@ -9,7 +9,7 @@
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.5.1` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.6.1` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -63,15 +63,25 @@ Com a leitura do QR Code, o sistema registra automaticamente o palete como pront
 
 ## Comunicação com a logística
 
-O sistema consolida os paletes pendentes e pode enviar um resumo automático ao canal de logística no Discord, por exemplo:
+O sistema pode enviar um resumo automático ao canal de logística no Discord. A mensagem informa o total de paletes físicos e separa os produtos em **paletes individuais**, **paletes mistos** e **avulsos**, quando existirem. Um produto aparece em mais de uma seção somente quando há quantidades distintas em cada uma delas. Por exemplo:
 
 ```text
-5 paletes
-1.000 unidades de M1x Seed Papagaio
-500 unidades de M1x Seed Periquito
+Paletes aguardando transferência — 09/11/2026
+Total: 2 paletes
+
+Paletes individuais: 1
+- M1X SEED CALOPSITA: 1.000 unidades
+
+Paletes mistos: 1
+Palete misto 1 — 280 unidades
+  • BIOAVIS MIX CALOPSITA: 40 unidades
+  • ZOOPRIME RING NECK: 240 unidades
+
+Avulsos: 1
+- M1X SEED CALOPSITA: 20 unidades
 ```
 
-O envio é configurável por dia da semana e horário, permitindo adaptar a rotina ao encerramento diário da fábrica.
+O envio é configurável por dia da semana e horário. O mesmo webhook também pode enviar o PDF do relatório mensal.
 
 ## Decisões de projeto
 
@@ -91,7 +101,7 @@ O catálogo é local e pode ser mantido manualmente ou importado de uma planilha
 
 ## Tecnologias utilizadas
 
-- Node.js, utilizando apenas recursos nativos para o servidor HTTP e APIs;
+- Node.js para o servidor HTTP e APIs, com PDFKit para a geração dos relatórios em PDF;
 - HTML, CSS e JavaScript puro no front-end;
 - Leitura de QR Code pela câmera do dispositivo, quando suportada pelo navegador;
 - Docker e Docker Compose para padronizar a execução no servidor;
