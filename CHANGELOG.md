@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.2 — 12/11/2026
+
+### Correções de bugs
+
+- Seta de expansão dos paletes mistos segue o mesmo padrão visual dos recebimentos.
+
 ## v1.6.1 — 09/11/2026
 
 ### Correções de bugs
