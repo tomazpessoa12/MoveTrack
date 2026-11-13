@@ -8,6 +8,10 @@ services:
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DATA_FILE: /app/data/data.json
+      SANKHYA_AMBIENTE: ${SANKHYA_AMBIENTE:-sandbox}
+      SANKHYA_CLIENT_ID: ${SANKHYA_CLIENT_ID:-}
+      SANKHYA_CLIENT_SECRET: ${SANKHYA_CLIENT_SECRET:-}
+      SANKHYA_TOKEN: ${SANKHYA_TOKEN:-}
     volumes:
       - ./data:/app/data
 

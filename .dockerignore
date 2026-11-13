@@ -9,3 +9,8 @@ README.md
 .env.*
 data.json
 settings.json
+
+# Pastas locais exclusivas da instalação de teste
+dados-teste
+caddy-teste-data
+caddy-teste-config

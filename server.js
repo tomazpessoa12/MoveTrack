@@ -4,6 +4,8 @@ const path = require('path');
 const crypto = require('crypto');
 const {productCode,productDetails,restoreProductCodes}=require('./product-code');
 const {monthlyPdf}=require('./reports');
+const {synchronize,updateCatalog}=require('./sankhya-catalog');
+let catalogSyncRunning=false;
 const {physicalCount,mix,unmix,requireSeparate,checkReceipt}=require('./mixed-pallets');
 const {digestText}=require('./discord-digest');
 const {createMonthlyScheduler}=require('./monthly-report');
@@ -180,6 +182,23 @@ const server = http.createServer(async (req, res) => {
       if(previous && previous!==product.code){for(const item of [...data.pallets,...(data.partials||[])])if(item.productCode===previous)item.productCode=product.code}
       writeData(data);
       return send(res, 200, { product, created: result.created, updated: result.updated });
+    }
+    if(req.method==='POST'&&url.pathname==='/api/admin/products/synchronize'){
+      if(!can(user,['Administrador']))return send(res,403,{error:'Sem permissão.'});
+      if(catalogSyncRunning)return send(res,409,{error:'Já existe uma atualização de catálogo em andamento.'});
+      catalogSyncRunning=true;
+      res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
+      const emit=(stage,extra={})=>{if(!res.destroyed)res.write(JSON.stringify({stage,...extra})+'\n')};
+      try{
+        const incoming=await synchronize({onStage:emit});
+        // Re-read after network calls so pallet movements during synchronization are preserved.
+        const fresh=readData(),result=updateCatalog(fresh.products,incoming,productInput);
+        if(res.destroyed)return;
+        emit('salvando');fresh.products=result.products;const temp=DATA_FILE+'.catalog-'+crypto.randomUUID()+'.tmp';try{fs.writeFileSync(temp,JSON.stringify(fresh,null,2),{mode:0o600});fs.renameSync(temp,DATA_FILE)}finally{try{fs.unlinkSync(temp)}catch(error){if(error.code!=='ENOENT')console.error('Falha ao limpar arquivo temporário do catálogo.')}}
+        const {products,...counts}=result;emit('concluido',{result:counts});
+      }catch(error){emit('erro',{error:error.message||'Não foi possível atualizar o catálogo.'})}
+      finally{catalogSyncRunning=false;res.end()}
+      return;
     }
     if (req.method === 'POST' && url.pathname === '/api/admin/products/import') {
       if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' });

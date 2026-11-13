@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.7.0 — 13/11/2026
+
+### Melhorias
+
+- Atualização manual do catálogo pela API Sankhya, com credenciais no servidor e progresso por etapas.
+- Resumo interativo com produtos importados, atualizados, inativados, sem alteração e erros agrupados.
+- Transição suave no fechamento dos diálogos.
+
+### Segurança de dados
+
+- Falhas de conexão e respostas incompletas preservam o catálogo; erros individuais são reportados, sem inativação automática nessa execução.
+
 ## v1.6.2 — 12/11/2026
 
 ### Correções de bugs

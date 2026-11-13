@@ -1,4 +1,4 @@
-/* MoveTrack v1.6.2 — interface de movimentação. */
+/* MoveTrack v1.7.0 — interface de movimentação. */
 document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="/movetrack.css">');
 const mtIconNames={report:'chart-line',register:'boxes-stacked',pending:'clipboard-list',partial:'box','partial-add':'arrow-up-from-bracket','partial-receive':'mt-arrow-down-from-bracket',receive:'truck',catalog:'tags',settings:'gear',camera:'qrcode',check:'circle-check',alert:'triangle-exclamation',image:'image',collapse:'chevron-left',expand:'chevron-right'};
 const mtIcon=name=>{const [viewBox,body]=window.mtFaIcons?.[mtIconNames[name]||name]||window.mtFaIcons['circle-info'];return `<svg viewBox="${viewBox}" fill="currentColor" aria-hidden="true">${body}</svg>`};
@@ -167,7 +167,7 @@ const mtNativeFetch=window.fetch.bind(window);
 let mtBusyCount=0,mtBusyDelay;
 window.fetch=async function(resource,options={}){
   const method=(options.method||'GET').toUpperCase();
-  const busy=String(resource).startsWith('/api/')&&method!=='GET';
+  const busy=String(resource).startsWith('/api/')&&method!=='GET'&&!options.mtSkipBusy;
   const active=document.activeElement;
   if(busy){
     mtBusyCount++;
@@ -202,6 +202,7 @@ adminLogin=function(){
 };
 
 const mtReleaseNotes=[
+ {version:'1.7.0',improvements:['Atualização manual do catálogo por API Sankhya, com progresso e resumo de resultados.'],fixes:['Resultados inválidos ou incompletos preservam o catálogo anterior.']},
  {version:'1.6.2',improvements:[],fixes:['Seta dos paletes mistos segue o mesmo padrão visual dos recebimentos.']},
  {version:'1.6.1',improvements:['Documentação atualizada com o formato do resumo e a versão atual.'],fixes:['Resumo diário do Discord separa os paletes individuais, mistos e avulsos sem repetir quantidades.']},
  {version:'1.6.0',improvements:['Paletes mistos no Admin e na Produção, com visualização dos produtos e mesclagem reversível.','Resumo do Discord e relatórios passam a contar paletes físicos.'],fixes:['Recebimento exige a leitura de todos os QR Codes de cada palete misto.']},
@@ -303,7 +304,7 @@ function mtSidebar(){
   const top=shell.querySelector('.top');const mobile=document.createElement('button');mobile.className='mt-mobile-menu';mobile.type='button';mobile.innerHTML=`${mtIcon('bars')}<span>Menu</span>`;mobile.setAttribute('aria-controls','mt-sidebar');mobile.onclick=()=>page.classList.toggle('mt-mobile-open');top.insertBefore(mobile,top.querySelector('.mt-header-right'));
 }
 function mtCatalogView(){
-  return `<section class="card mt-catalog"><div class="mt-catalog-head"><h2>Catálogo de produtos</h2><div class="mt-catalog-actions"><button type="button" id="mt-new" class="mt-catalog-add">Adicionar produto</button><button type="button" id="mt-import" class="mt-catalog-import">Importar cadastro</button></div></div><div class="mt-catalog-controls"><label>Buscar por nome, código ou código de barras<input id="mt-search" type="search" placeholder="Digite para pesquisar" value="${esc(state.catalogSearch||'')}"></label><label>Ordenar por<select id="mt-sort"><option value="name">Nome</option><option value="code">Código</option><option value="brand">Marca</option></select></label></div><div class="mt-catalog-selection"><label><input id="mt-select-visible" type="checkbox"> Selecionar itens exibidos</label><div class="mt-catalog-selection-actions"><span id="mt-product-count" class="mt-product-count" role="status" aria-live="polite"></span><button type="button" id="mt-delete-selected" class="danger" disabled>Excluir selecionados (0)</button></div></div><div class="mt-product-list" id="mt-products"></div></section>`;
+  return `<section class="card mt-catalog"><div class="mt-catalog-head"><h2>Catálogo de produtos</h2><div class="mt-catalog-actions"><button type="button" id="mt-new" class="mt-catalog-add">Adicionar produto</button><button type="button" id="mt-import" class="mt-catalog-import">Atualizar cadastro</button></div></div><div class="mt-catalog-controls"><label>Buscar por nome, código ou código de barras<input id="mt-search" type="search" placeholder="Digite para pesquisar" value="${esc(state.catalogSearch||'')}"></label><label>Ordenar por<select id="mt-sort"><option value="name">Nome</option><option value="code">Código</option><option value="brand">Marca</option></select></label></div><div class="mt-catalog-selection"><label><input id="mt-select-visible" type="checkbox"> Selecionar itens exibidos</label><div class="mt-catalog-selection-actions"><span id="mt-product-count" class="mt-product-count" role="status" aria-live="polite"></span><button type="button" id="mt-delete-selected" class="danger" disabled>Excluir selecionados (0)</button></div></div><div class="mt-product-list" id="mt-products"></div></section>`;
 }
 async function mtDeleteProducts(codes){
   if(!codes.length)return;
@@ -321,7 +322,7 @@ function mtRenderCatalog(){
   const list=document.querySelector('#mt-products');if(!list)return;
   const counter=document.querySelector('#mt-product-count');if(counter)counter.textContent=`${rows.length} produto${rows.length===1?'':'s'}${query?' encontrado'+(rows.length===1?'':'s'):''}`;
   const selected=state.catalogSelected||(state.catalogSelected=new Set());
-  list.innerHTML=rows.map(item=>`<article class="mt-product-row"><input class="mt-product-select" type="checkbox" value="${item.code}" aria-label="Selecionar ${esc(item.name)}" ${selected.has(item.code)?'checked':''}>${mtProductImage({productCode:item.code,product:item.name})}<div class="mt-product-info"><strong>${esc(item.name)}</strong><span>${esc(item.brand)} · Cód. ${item.code} · EAN ${esc(item.barcode)}</span></div><button type="button" class="secondary mt-edit mt-iconized" data-code="${item.code}" aria-label="Editar ${esc(item.name)}" title="Editar produto">${mtIcon('pen')}</button></article>`).join('')||'<p class="small">Nenhum produto encontrado.</p>';
+  list.innerHTML=rows.map(item=>`<article class="mt-product-row"><input class="mt-product-select" type="checkbox" value="${item.code}" aria-label="Selecionar ${esc(item.name)}" ${selected.has(item.code)?'checked':''}>${mtProductImage({productCode:item.code,product:item.name})}<div class="mt-product-info"><strong>${esc(item.name)} ${item.active===false?'<small class="mt-catalog-inactive">INATIVO</small>':''}</strong><span>${esc(item.brand)} · Cód. ${item.code} · EAN ${esc(item.barcode)}</span></div><button type="button" class="secondary mt-edit mt-iconized" data-code="${item.code}" aria-label="Editar ${esc(item.name)}" title="Editar produto">${mtIcon('pen')}</button></article>`).join('')||'<p class="small">Nenhum produto encontrado.</p>';
   list.querySelectorAll('.mt-edit').forEach(button=>button.onclick=()=>mtProductModal((state.products||[]).find(p=>p.code===Number(button.dataset.code))));
   const selectAll=document.querySelector('#mt-select-visible'),deleteButton=document.querySelector('#mt-delete-selected');
   const refresh=()=>{deleteButton.disabled=!selected.size;deleteButton.textContent=`Excluir selecionados (${selected.size})`;selectAll.checked=!!rows.length&&rows.every(row=>selected.has(row.code));selectAll.indeterminate=rows.some(row=>selected.has(row.code))&&!selectAll.checked};
@@ -334,21 +335,21 @@ function mtWireCatalog(){
   document.querySelector('#mt-sort').value=state.catalogSort||'name';
   document.querySelector('#mt-sort').onchange=event=>{state.catalogSort=event.target.value;mtRenderCatalog()};
   document.querySelector('#mt-new').onclick=()=>mtProductModal();
-  document.querySelector('#mt-import').onclick=mtImportModal;
+  document.querySelector('#mt-import').onclick=mtSynchronizeCatalog;
   document.querySelector('#mt-delete-selected').onclick=()=>mtDeleteProducts([...(state.catalogSelected||[])]);
   mtRenderCatalog();
 }
 function mtModal(inner){
   const overlay=document.createElement('div');overlay.className='modal mt-modal';
   overlay.innerHTML=`<div class="modal-card" role="dialog" aria-modal="true">${inner}</div>`;document.body.append(overlay);
-  overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.remove()});
-  overlay.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>overlay.remove());
+  overlay.addEventListener('click',event=>{if(event.target===overlay)mtCloseModal(overlay)});
+  overlay.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>mtCloseModal(overlay));
   return overlay;
 }
 function mtConfirmAction(message){
   return new Promise(resolve=>{
     const overlay=mtModal(`<h2>Confirmar ação</h2><p>${esc(message)}</p><div class="actions"><button type="button" class="danger mt-confirm-yes">Confirmar</button><button type="button" class="secondary mt-confirm-no">Voltar</button></div>`);
-    const finish=value=>{overlay.remove();resolve(value)};
+    const finish=value=>{mtCloseModal(overlay);resolve(value)};
     overlay.querySelector('.mt-confirm-yes').onclick=()=>finish(true);
     overlay.querySelector('.mt-confirm-no').onclick=()=>finish(false);
     overlay.addEventListener('click',event=>{if(event.target===overlay)finish(false)});
@@ -370,7 +371,7 @@ document.addEventListener('click',async event=>{
 },true);
 function mtProductModal(product){
   const overlay=mtModal(`<h2>${product?'Editar produto':'Novo produto'}</h2><form id="mt-product-form" class="form"><label>Código do produto<input name="code" type="number" min="1" required value="${product?.code||''}"></label><label>Nome do produto<input name="name" required maxlength="180" value="${esc(product?.name||'')}"></label><label>Marca<input name="brand" required maxlength="80" value="${esc(product?.brand||'')}"></label><label>Código de barras (EAN-13)<input name="barcode" required inputmode="numeric" pattern="[0-9]{13}" maxlength="13" value="${esc(product?.barcode||'')}"></label><label class="mt-inline-check"><input name="active" type="checkbox" ${product?.active===false?'':'checked'}> Ativo</label><p class="small">A foto será buscada em CODIGO.jpg pelo código do produto.</p><div class="actions"><button>Salvar produto</button><button type="button" class="secondary" data-close>Cancelar</button></div></form>`);
-  overlay.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.target);try{await api('/admin/products',{method:'POST',body:JSON.stringify({originalCode:product?.code,code:Number(form.get('code')),name:form.get('name'),brand:form.get('brand'),barcode:form.get('barcode'),active:form.has('active')})});overlay.remove();state.feedback={text:'Produto salvo no catálogo.'};await load()}catch(error){msg(error.message,true)}};
+  overlay.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=new FormData(event.target);try{await api('/admin/products',{method:'POST',body:JSON.stringify({originalCode:product?.code,code:Number(form.get('code')),name:form.get('name'),brand:form.get('brand'),barcode:form.get('barcode'),active:form.has('active')})});mtCloseModal(overlay);state.feedback={text:'Produto salvo no catálogo.'};await load()}catch(error){msg(error.message,true)}};
 }
 const MT_SQL=`SELECT PRO.CODPROD, OBTEM_NOME_LIMPO(PRO.CODPROD) AS DESCRICAO, PRO.MARCA, BAR.CODBARRA
 FROM TGFPRO PRO
@@ -398,11 +399,33 @@ function mtParseCSV(text){
     return {code:cells[indexes[0]].trim(),name:cells[indexes[1]].trim(),brand:cells[indexes[2]].trim(),barcode:cells[indexes[3]].trim()};
   });
 }
+async function mtSynchronizeCatalog(){
+ const panel=document.createElement('div');panel.className='mt-busy mt-catalog-progress';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');
+ panel.innerHTML=`<div><span class="mt-stack-loader" aria-hidden="true"><img class="mt-loader-pallet" src="/assets/loader-pallet.webp" alt=""><img class="mt-loader-box mt-loader-box-base-back" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-base-left" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-base-right" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-base-front" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-top-back" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-one" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-two" src="/assets/loader-box.webp" alt=""><img class="mt-loader-box mt-loader-box-three" src="/assets/loader-box.webp" alt=""></span><strong>Atualizando cadastro</strong><small class="mt-catalog-stage">Iniciando atualização...</small><div class="mt-progress-track" role="progressbar" aria-label="Atualização em andamento"><span></span></div><small>O tempo depende da conexão e do Sankhya.</small></div>`;
+ document.body.append(panel);const text=panel.querySelector('.mt-catalog-stage');let result,error;
+ const stageNames={autenticando:'Autenticando no Sankhya...',consultando:'Consultando produtos da indústria...',validando:'Validando o resultado...',salvando:'Salvando o catálogo...'};
+ try{
+  const response=await fetch('/api/admin/products/synchronize',{method:'POST',mtSkipBusy:true,headers:{'Content-Type':'application/json',Authorization:'Bearer '+state.token},body:'{}'});
+  if(!response.ok){let detail;try{detail=await response.json()}catch{}throw Error(detail?.error||'Não foi possível iniciar a atualização.')}
+  const reader=response.body?.getReader();if(!reader)throw Error('O navegador não permite acompanhar esta atualização.');const decoder=new TextDecoder();let buffer='';
+  function receive(line){if(!line.trim())return;const event=JSON.parse(line);if(stageNames[event.stage])text.textContent=stageNames[event.stage];if(event.stage==='erro')error=event.error;if(event.stage==='concluido')result=event.result}
+  while(true){const {value,done}=await reader.read();buffer+=decoder.decode(value||new Uint8Array(),{stream:!done});const lines=buffer.split('\n');buffer=lines.pop();for(const line of lines)receive(line);if(done)break}if(buffer)receive(buffer);
+  if(error)throw Error(error);if(!result)throw Error('A conexão foi interrompida. Confira o catálogo antes de tentar novamente.');
+  panel.remove();await load();
+  const errors=result.errors||[],hasErrors=errors.length>0;
+  const grouped=new Map();for(const item of errors){const code=String(item.code||''),key=code?`code:${code}`:`name:${item.name||'desconhecido'}`;if(!grouped.has(key))grouped.set(key,{code,name:item.name,reasons:[],barcodes:[]});const g=grouped.get(key);if(!g.name&&item.name)g.name=item.name;const barcode=String(item.barcode||'');if(!g.barcodes.includes(barcode))g.barcodes.push(barcode);if(!g.reasons.includes(item.reason))g.reasons.push(item.reason)}
+  const cards=[['created','Importados','download','green',result.created],['updated','Atualizados','arrows-rotate','blue',result.updated],['inactivated','Inativados','toggle-off','yellow',result.inactivated],['unchanged','Sem alteração','circle-pause','gray',result.unchanged],['errors','Erros','circle-xmark','red',errors.length]];
+  const summary=mtModal(`<div class="mt-sync-heading ${hasErrors?'warning':'success'}">${mtIcon(hasErrors?'triangle-exclamation':'circle-check')}<div><h2>Resumo da atualização</h2><p>${hasErrors?'Os produtos válidos foram processados. Alguns precisam de correção.':'Consulta concluída com sucesso.'}</p></div></div><div class="mt-sync-result">${cards.map(([key,label,icon,color,count])=>`<button type="button" class="mt-sync-stat ${color}" data-sync-status="${key}" aria-pressed="false"><span class="mt-sync-stat-top">${mtIcon(icon)}<strong>${fmt(count)}</strong></span><span>${label}</span></button>`).join('')}</div>${hasErrors?`<p class="mt-sync-info">${mtIcon('circle-info')} Por segurança, os produtos existentes não foram inativados nesta atualização. Corrija os registros e tente novamente.</p>`:''}<div class="mt-sync-detail" aria-live="polite"></div><div class="actions"><button type="button" data-close>Concluir</button></div>`);
+  summary.classList.add('mt-sync-summary');
+  function showStatus(key){const card=cards.find(c=>c[0]===key),items=key==='errors'?[...grouped.values()]:(result.lists?.[key]||[]);summary.querySelectorAll('[data-sync-status]').forEach(button=>{const active=button.dataset.syncStatus===key;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',String(active))});const detail=summary.querySelector('.mt-sync-detail');detail.innerHTML=`<div class="mt-sync-detail-heading ${card[3]}"><strong>${key==='errors'?'Produtos com erro':'Produtos '+card[1].toLowerCase()}</strong><span>${key==='errors'?`${fmt(errors.length)} ocorrências em ${fmt(items.length)} produtos`:`${fmt(items.length)} produto(s)`}</span></div>${items.length?`<div class="${key==='errors'?'mt-sync-error-list':'mt-sync-product-list'}">${items.map(item=>key==='errors'?`<article class="mt-sync-error-item"><strong>${esc(item.code||'Código não informado')}${item.name?' · '+esc(item.name):''}</strong><div class="mt-sync-barcode">Código de barras: ${item.barcodes.map(code=>esc(code||'Não informado')).join(' · ')}</div><ul>${item.reasons.map(reason=>`<li>${esc(reason)}</li>`).join('')}</ul></article>`:`<div class="mt-sync-product-row"><b>${esc(item.code)}</b><span>${esc(item.name)}<small class="mt-sync-barcode">Código de barras: ${esc(item.barcode||'Não informado')}</small></span></div>`).join('')}</div>`:'<p class="mt-sync-empty">Nenhum produto neste status.</p>'}`};
+  summary.querySelectorAll('[data-sync-status]').forEach(button=>button.addEventListener('click',()=>showStatus(button.dataset.syncStatus)));showStatus(hasErrors?'errors':'created');summary.querySelector('[data-close]')?.focus();
+ }catch(e){panel.remove();const message=String(e.message||'Falha na atualização.');const dialog=mtModal(`<div class="mt-sync-heading error"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><div><h2>Não foi possível atualizar</h2><p>${esc(message)}</p></div></div><p class="mt-sync-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> O catálogo foi preservado quando a consulta não pôde ser validada.</p><div class="actions"><button type="button" data-close>Fechar</button></div>`);dialog.querySelector('[data-close]')?.focus()}
+}
 function mtImportModal(){
   const overlay=mtModal(`<h2>Importar cadastro</h2><p>Execute a consulta no SQL Developer do Sankhya, exporte o resultado em CSV com cabeçalhos e selecione o arquivo abaixo. Os produtos existentes são atualizados pelo código; os demais são adicionados. Nenhum produto é removido.</p><pre class="mt-sql"><code>${esc(MT_SQL)}</code></pre><label>Arquivo CSV<input id="mt-csv" type="file" accept=".csv,text/csv,text/plain"></label><p id="mt-import-preview" class="small">Aguardando arquivo.</p><div class="actions"><button type="button" id="mt-import-confirm" disabled>Importar produtos</button><button type="button" class="secondary" data-close>Cancelar</button></div>`);
   const file=overlay.querySelector('#mt-csv'),confirm=overlay.querySelector('#mt-import-confirm'),preview=overlay.querySelector('#mt-import-preview');let rows=[];
   file.onchange=async()=>{try{rows=mtParseCSV(await file.files[0].text());if(!rows.length)throw Error('Arquivo sem produtos.');const existing=new Set((state.products||[]).map(item=>item.code));const additions=rows.filter(row=>!existing.has(Number(row.code))).length;preview.textContent=`${rows.length} produtos no arquivo · ${additions} novos · ${rows.length-additions} para atualizar.`;confirm.disabled=false}catch(error){rows=[];confirm.disabled=true;preview.textContent=error.message;msg(error.message,true)}};
-  confirm.onclick=async()=>{try{const result=await api('/admin/products/import',{method:'POST',body:JSON.stringify({rows})});overlay.remove();state.feedback={text:`Cadastro importado: ${result.created} novos e ${result.updated} atualizados.`};await load()}catch(error){msg(error.message,true)}};
+  confirm.onclick=async()=>{try{const result=await api('/admin/products/import',{method:'POST',body:JSON.stringify({rows})});mtCloseModal(overlay);state.feedback={text:`Cadastro importado: ${result.created} novos e ${result.updated} atualizados.`};await load()}catch(error){msg(error.message,true)}};
 }
 
 /* Mobile layout and shared avulso cards approved in the HTML previews. */

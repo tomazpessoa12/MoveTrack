@@ -9,7 +9,7 @@
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.6.2` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.7.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -146,3 +146,9 @@ Após instalar as dependências com `npm ci`, execute `npm test`. Os testes cobr
 ### Paletes mistos
 
 Em Paletes pendentes, selecione **Mesclar paletes** e marque os registros que estão fisicamente no mesmo palete. O conjunto conta como um palete físico e pode ser expandido para consultar seus produtos. Para cancelar, retirar ou devolver avulsos de um item mesclado, primeiro desfaça a mesclagem. Na Logística, leia o QR Code de cada produto do conjunto: o recebimento só é confirmado quando todos estiverem incluídos. O resumo diário do Discord mostra a contagem física e detalha os conjuntos.
+
+## Integração de catálogo com Sankhya
+
+A atualização é acionada manualmente no catálogo do administrador. Configure `SANKHYA_AMBIENTE` (`sandbox` ou `producao`), `SANKHYA_CLIENT_ID`, `SANKHYA_CLIENT_SECRET` e `SANKHYA_TOKEN` no arquivo `.env` do servidor, sem publicar credenciais. Após alterar o arquivo, recrie o container com `docker compose up -d --build`. Sem credenciais, o aplicativo continua funcionando e apenas a atualização do cadastro informa que elas estão ausentes.
+
+A integração consulta produtos ativos do segmento MELODIAPET e códigos de barras da unidade padrão; a conta deve ter acesso ao serviço DbExplorer e às tabelas e função utilizadas. Registros com erros são informados no resumo e não são aplicados; enquanto houver erros individuais, nenhuma inativação automática é realizada. Falhas de conexão ou resultados incompletos preservam o catálogo.
