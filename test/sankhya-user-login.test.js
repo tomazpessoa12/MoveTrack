@@ -1,0 +1,4 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const {loginSankhya}=require('../sankhya-user-login');
+const inputs={ambiente:'sandbox',clientId:'fake',clientSecret:'fake',token:'fake',username:'teste',password:'fake'};
+test('decodifica identidade 0 e 96 em respostas simuladas',async()=>{for(const [encoded,expected] of [['MA==',0],['OTY=',96]]){let count=0;const fake=async()=>({ok:true,json:async()=>++count===1?{access_token:'fake'}:{status:'1',responseBody:{idusu:{$:encoded},jsessionid:{$:'fake'}}}});assert.equal((await loginSankhya(inputs,fake)).code,expected)}});
+test('não autentica resposta recusada ou incompleta',async()=>{for(const response of [{status:'0'},{status:'1',responseBody:{idusu:{$:'OTY='}}}]){let count=0;const fake=async()=>({ok:true,json:async()=>++count===1?{access_token:'fake'}:response});await assert.rejects(()=>loginSankhya(inputs,fake));}});

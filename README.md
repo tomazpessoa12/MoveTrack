@@ -9,7 +9,7 @@
 
 Aplicação web desenvolvida para digitalizar o controle de transferência de produtos acabados entre a fábrica e o galpão de armazenagem da Melodia Pet.
 
-**Versão atual:** `v1.7.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
+**Versão atual:** `v1.8.0` · Consulte o histórico em [CHANGELOG.md](CHANGELOG.md).
 
 ## O desafio
 
@@ -152,3 +152,7 @@ Em Paletes pendentes, selecione **Mesclar paletes** e marque os registros que es
 A atualização é acionada manualmente no catálogo do administrador. Configure `SANKHYA_AMBIENTE` (`sandbox` ou `producao`), `SANKHYA_CLIENT_ID`, `SANKHYA_CLIENT_SECRET` e `SANKHYA_TOKEN` no arquivo `.env` do servidor, sem publicar credenciais. Após alterar o arquivo, recrie o container com `docker compose up -d --build`. Sem credenciais, o aplicativo continua funcionando e apenas a atualização do cadastro informa que elas estão ausentes.
 
 A integração consulta produtos ativos do segmento MELODIAPET e códigos de barras da unidade padrão; a conta deve ter acesso ao serviço DbExplorer e às tabelas e função utilizadas. Registros com erros são informados no resumo e não são aplicados; enquanto houver erros individuais, nenhuma inativação automática é realizada. Falhas de conexão ou resultados incompletos preservam o catálogo.
+
+## Login administrativo e integrações (v1.8.0)
+
+O acesso ao Admin utiliza usuário e senha do Sankhya Om. Inicialmente somente o código 96 pode administrar a aba Integração; outros usuários podem ser autorizados na própria aba. A primeira conexão pode utilizar as credenciais `SANKHYA_*` no `.env` já existente. Os ajustes na aba Integração são persistidos em `data/integration-test.json` e passam a ter prioridade; nesse momento as credenciais ficam sem criptografia, portanto a pasta de dados precisa ter acesso restrito. Alterações ao endereço salvo não alteram automaticamente o Caddy: o `APP_HOST` do Compose e o serviço HTTPS ainda precisam ser configurados no servidor. O certificado público da CA local fica disponível para download na aba Integração após a instalação subir.

@@ -20,3 +20,7 @@ node_modules/
 # Controle privado do envio mensal
 /monthly-reports.json
 /monthly-reports.json.tmp
+
+# Configuração privada da integração
+integration-test.json
+integration-test.json.tmp

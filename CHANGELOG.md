@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.8.0 — 17/11/2026
+
+### Melhorias
+
+- Login administrativo usando o usuário do Sankhya Om.
+- Aba Integração com credenciais, webhook, certificado e permissões por usuário.
+- Seleção em lote para adicionar ou remover usuários autorizados.
+
 ## v1.7.0 — 13/11/2026
 
 ### Melhorias

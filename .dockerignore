@@ -14,3 +14,8 @@ settings.json
 dados-teste
 caddy-teste-data
 caddy-teste-config
+
+dados-v180
+caddy-v180-data
+caddy-v180-config
+integration-test.json

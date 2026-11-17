@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const {productCode,productDetails,restoreProductCodes}=require('./product-code');
 const {monthlyPdf}=require('./reports');
 const {synchronize,updateCatalog}=require('./sankhya-catalog');
+const integration=require('./integration-store');
+const {loginSankhya}=require('./sankhya-user-login');
 let catalogSyncRunning=false;
 const {physicalCount,mix,unmix,requireSeparate,checkReceipt}=require('./mixed-pallets');
 const {digestText}=require('./discord-digest');
@@ -42,9 +44,8 @@ function matches(password, stored) {
 function now() { return new Date().toISOString(); }
 function seed() {
   const password = process.env.ADMIN_PASSWORD;
-  if (!password) throw new Error('Defina ADMIN_PASSWORD antes de iniciar a aplicação.');
   return {
-    users: [{ id: 'admin', name: 'Administrador', sector: 'Administrador', username: 'admin', password: hash(password), forcePasswordChange: false, active: true }],
+    users: password ? [{ id: 'admin', name: 'Administrador', sector: 'Administrador', username: 'admin', password: hash(password), forcePasswordChange: false, active: true }] : [],
     pallets: [], partials: [], receipts: [], products: INITIAL_PRODUCTS, resetRequests: [], settings: { discordWebhook: '', discordHour: '18:00', discordDays: [1,2,3,4,5], lastDiscordDigest: '', monthlyReportEnabled:true, monthlyReportDay:1, monthlyReportHour:'07:00', monthlyReportEnabledAt:now(), defaultProductColor:'#001834', productLines: [{name:'BIOAVIS BITS',match:'BIOAVIS BITS',color:'#17341E'},{name:'BIOAVIS MIX',match:'BIOAVIS MIX',color:'#2E2B62'},{name:'M1X SEED',match:'M1X SEED',color:'#FFCD10'},{name:'HPRO',match:'HPRO',color:'#E2752A'},{name:'ZOOPRIME',match:'ZOOPRIME',color:'#2C2B26'}] }
   };
 }
@@ -62,13 +63,13 @@ function monthlySettings(current,input){
  const changed=current.monthlyReportEnabled!==input.monthlyReportEnabled||Number(current.monthlyReportDay)!==day||current.monthlyReportHour!==hour;
  return{monthlyReportEnabled:input.monthlyReportEnabled,monthlyReportDay:day,monthlyReportHour:hour,monthlyReportEnabledAt:changed?now():current.monthlyReportEnabledAt};
 }
-function publicUser(u) { return { id: u.id, name: u.name, sector: u.sector, username: u.username, active: u.active, forcePasswordChange: u.forcePasswordChange }; }
+function publicUser(u) { return { id: u.id, name: u.name, sector: u.sector, username: u.username, active: u.active, forcePasswordChange: u.forcePasswordChange, code:u.code, integrationAllowed:u.integrationAllowed===true }; }
 function tokenUser(req,data){
  const key=sessionKey((req.headers.authorization||'').replace('Bearer ','')),session=sessions.get(key);
  if(!session)return null;
- const user=data.users.find(u=>u.id===session.userId&&u.active);
- if(session.expiresAt<=Date.now()||!user||session.credential!==credentialKey(user)){sessions.delete(key);saveSessions();return null}
- return user;
+ if(session.sankhyaCode!==undefined){if(session.expiresAt<=Date.now()){sessions.delete(key);saveSessions();return null}return {id:'sankhya:'+session.sankhyaCode,code:session.sankhyaCode,name:session.username,username:session.username,sector:'Administrador',active:true,integrationAllowed:integration.read().access.includes(session.sankhyaCode)}}
+ // Local administrative sessions from versions before 1.8.0 cannot bypass Sankhya login.
+ sessions.delete(key);saveSessions();return null;
 }
 function sendLive(req,res,data,admin=false){
  const snapshot={pallets:data.pallets,partials:data.partials||[],receipts:admin?data.receipts:undefined,summary:summary(data),productCatalog:data.products.filter(item=>item.active).map(({code,name})=>({code,name})),productLines:data.settings.productLines||[],defaultProductColor:data.settings.defaultProductColor||'#001834'};
@@ -133,6 +134,14 @@ function mergeProducts(existing, incoming) {
   return { products: [...byCode.values()], created, updated };
 }
 
+async function listActiveUsers(c){
+ const bases={sandbox:'https://api.sandbox.sankhya.com.br',producao:'https://api.sankhya.com.br'},base=bases[c.ambiente];if(!base||!c.clientId||!c.clientSecret||!c.token)throw Error('Credenciais de integração ausentes.');
+ const opt={redirect:'error',signal:AbortSignal.timeout(30000)};let a,r;try{a=await fetch(base+'/authenticate',{...opt,method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Token':c.token},body:new URLSearchParams({grant_type:'client_credentials',client_id:c.clientId,client_secret:c.clientSecret})});if(!a.ok)throw Error();a=await a.json();if(!a.access_token)throw Error();r=await fetch(base+'/gateway/v1/mge/service.sbr?serviceName=DbExplorerSP.executeQuery&outputType=json',{...opt,method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.access_token},body:JSON.stringify({serviceName:'DbExplorerSP.executeQuery',requestBody:{sql:"SELECT USU.CODUSU, USU.NOMEUSU, GRU.NOMEGRUPO, COUNT(*) OVER () AS TOTAL_REGISTROS FROM TSIUSU USU LEFT JOIN TSIGRU GRU ON USU.CODGRUPO = GRU.CODGRUPO WHERE USU.DTLIMACESSO >= SYSDATE ORDER BY USU.NOMEUSU"}})});if(!r.ok)throw Error();r=await r.json()}catch{throw Error('Não foi possível consultar usuários ativos no Sankhya.');}
+ if(String(r.status)!=='1'||!Array.isArray(r.responseBody?.rows))throw Error('Não foi possível consultar usuários ativos no Sankhya.');
+ const fields=(r.responseBody.fieldsMetadata?.field||r.responseBody.fieldsMetadata||[]).map(x=>String(x.name||x.fieldName||x).toUpperCase()),rows=r.responseBody.rows,unwrap=v=>v&&typeof v==='object'&&'$' in v?v.$:v;
+ if(!rows.length)return [];let users=rows.map(row=>{let obj={};if(Array.isArray(row)){if(row.length!==fields.length)throw Error('Resposta incompleta de usuários.');fields.forEach((f,i)=>obj[f]=unwrap(row[i]));}else for(const [k,v] of Object.entries(row))obj[k.toUpperCase()]=unwrap(v);if(Number(obj.TOTAL_REGISTROS)!==rows.length)throw Error('Lista incompleta de usuários.');let code=Number(obj.CODUSU),name=String(obj.NOMEUSU||''),group=String(obj.NOMEGRUPO||'');if(!Number.isSafeInteger(code)||code<0||!name)throw Error('Resposta inválida de usuários.');return {code,name,group}});return users;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
@@ -146,11 +155,11 @@ const server = http.createServer(async (req, res) => {
   let data = readData();
   try {
     if (req.method === 'POST' && url.pathname === '/api/login') {
-      const b = await body(req); const user = data.users.find(u => u.username.toLowerCase() === String(b.username || '').toLowerCase() && u.active);
-      if (!user || !matches(b.password || '', user.password)) return send(res, 401, { error: 'Usuário ou senha inválidos.' });
-      const token=crypto.randomBytes(24).toString('hex'),remember=b.remember===true;
-      sessions.set(sessionKey(token),{userId:user.id,credential:credentialKey(user),remember,expiresAt:Date.now()+(remember?30*24:12)*60*60*1000});saveSessions();
-      return send(res,200,{token,user:publicUser(user)});
+      const b=await body(req); const c=integration.read();let identity;
+      try{identity=await loginSankhya({ambiente:c.ambiente,clientId:c.clientId,clientSecret:c.clientSecret,token:c.token,username:String(b.username||''),password:String(b.password||'')})}catch(e){return send(res,401,{error:e.message})}
+      const token=crypto.randomBytes(24).toString('hex'),remember=b.remember===true,username=String(b.username||'');
+      sessions.set(sessionKey(token),{sankhyaCode:identity.code,username,remember,expiresAt:Date.now()+(remember?30*24:12)*60*60*1000});saveSessions();
+      return send(res,200,{token,user:publicUser({id:'sankhya:'+identity.code,code:identity.code,name:username,username,sector:'Administrador',active:true,integrationAllowed:c.access.includes(identity.code)})});
     }
     if(req.method==='POST'&&url.pathname==='/api/logout'){sessions.delete(sessionKey((req.headers.authorization||'').replace('Bearer ','')));saveSessions();return send(res,200,{ok:true})}
     if (req.method === 'POST' && url.pathname === '/api/reset-request') { const b = await body(req); const u = data.users.find(x => x.username.toLowerCase() === String(b.username || '').toLowerCase()); if (u) { data.resetRequests = data.resetRequests.filter(x => x.userId !== u.id); data.resetRequests.push({ id: crypto.randomUUID(), userId: u.id, requestedAt: now() }); writeData(data); } return send(res, 200, { ok: true }); }
@@ -169,7 +178,18 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/public/receipts') { const b=await body(req);data=readData();const ids=[...new Set(b.ids||[])],partialIds=[...new Set(b.partialIds||[])];if((!ids.length&&!partialIds.length)||!b.signature)throw new Error('Inclua itens e assinatura.');const pallets=ids.map(id=>data.pallets.find(p=>p.id===id)),partials=partialIds.map(id=>(data.partials||[]).find(p=>p.id===id));if(pallets.some(p=>!p||p.status!=='PRONTO')||partials.some(p=>!p||p.status!=='PENDENTE'))throw new Error('Há item inexistente ou já recebido.');checkReceipt(data,ids);const receipt={id:crypto.randomUUID(),palletIds:ids,partialIds,receivedAt:now(),receivedBy:'Assinatura digital',observation:String(b.observation||'').trim(),signature:b.signature};pallets.forEach(p=>{p.status='RECEBIDO';p.receiptId=receipt.id});partials.forEach(p=>{p.status='RECEBIDO';p.receiptId=receipt.id});data.receipts.unshift(receipt);writeData(data);return send(res,201,{receipt}); }
     const user = tokenUser(req, data); if (!user) return send(res, 401, { error: 'Sessão expirada. Entre novamente.' });
     if(req.method==='GET'&&url.pathname==='/api/live')return sendLive(req,res,data,true);
-    if (req.method === 'GET' && url.pathname === '/api/bootstrap') return send(res, 200, { user: publicUser(user), pallets: data.pallets, partials:data.partials||[], receipts: data.receipts, summary: summary(data), products: can(user, ['Administrador']) ? data.products : undefined, settings: can(user, ['Administrador']) ? data.settings : undefined, users: can(user, ['Administrador']) ? data.users.map(publicUser) : undefined, resetRequests: can(user, ['Administrador']) ? data.resetRequests : undefined });
+    if (req.method === 'GET' && url.pathname === '/api/bootstrap') return send(res, 200, { user: publicUser(user), pallets: data.pallets, partials:data.partials||[], receipts: data.receipts, summary: summary(data), products: can(user, ['Administrador']) ? data.products : undefined, settings: can(user, ['Administrador']) ? {...data.settings,discordWebhook:undefined} : undefined, users: can(user, ['Administrador']) ? data.users.map(publicUser) : undefined, resetRequests: can(user, ['Administrador']) ? data.resetRequests : undefined });
+    if(url.pathname.startsWith('/api/admin/integration')){
+      if(!user.integrationAllowed)return send(res,403,{error:'Acesso restrito à integração.'});
+      const c=integration.read();
+      if(req.method==='GET'&&url.pathname==='/api/admin/integration'){let cache=c.accessUsers||{};if(c.access.some(code=>!cache[String(code)])){try{const users=await listActiveUsers(c);const fresh=integration.read();fresh.accessUsers=fresh.accessUsers||{};for(const u of users)if(fresh.access.includes(u.code))fresh.accessUsers[String(u.code)]={name:u.name,group:u.group};integration.save(fresh);cache=fresh.accessUsers}catch{}}return send(res,200,{ambiente:c.ambiente,clientIdConfigured:!!c.clientId,secretConfigured:!!c.clientSecret,tokenConfigured:!!c.token,host:c.host,access:c.access,accessUsers:cache,webhookConfigured:!!data.settings.discordWebhook})}
+      if(req.method==='POST'&&url.pathname==='/api/admin/integration'){const b=await body(req);if(!['sandbox','producao'].includes(b.ambiente))throw Error('Ambiente inválido.');for(const k of ['clientId','clientSecret','token'])if(typeof b[k]==='string'&&b[k].trim())c[k]=b[k].trim();c.ambiente=b.ambiente;const host=String(b.host||'').trim();if(!/^[a-zA-Z0-9.:-]+$/.test(host))throw Error('Endereço inválido.');c.host=host;integration.save(c);if(typeof b.webhook==='string'&&b.webhook.trim()){data.settings.discordWebhook=b.webhook.trim();writeData(data)}return send(res,200,{ok:true})}
+      if(req.method==='POST'&&url.pathname==='/api/admin/integration/access'){const b=await body(req);if(b.code===null||b.code===undefined||b.code==='')throw Error('Usuário inválido.');const code=Number(b.code);if(!Number.isSafeInteger(code)||code<0)throw Error('Usuário inválido.');if(b.action==='add'){const users=await listActiveUsers(c);if(!users.some(x=>x.code===code))throw Error('Usuário ativo não encontrado.');if(!c.access.includes(code))c.access.push(code)}else if(b.action==='remove'){if(c.access.includes(code)&&c.access.length<=1)throw Error('Mantenha ao menos um usuário autorizado.');c.access=c.access.filter(x=>x!==code)}else throw Error('Ação inválida.');integration.save(c);return send(res,200,{ok:true})}
+      if(req.method==='POST'&&url.pathname==='/api/admin/integration/access-batch'){const b=await body(req);if(!Array.isArray(b.codes)||!b.codes.length||b.codes.length>1000||b.codes.some(x=>!Number.isSafeInteger(x)||x<0))throw Error('Seleção inválida.');const codes=[...new Set(b.codes)];if(b.action==='add'){const users=await listActiveUsers(c),map=new Map(users.map(u=>[u.code,u]));if(codes.some(code=>!map.has(code)))throw Error('Um ou mais usuários não estão ativos. Atualize a lista.');const fresh=integration.read();fresh.accessUsers=fresh.accessUsers||{};for(const code of codes){if(!fresh.access.includes(code))fresh.access.push(code);const u=map.get(code);fresh.accessUsers[String(code)]={name:u.name,group:u.group}}integration.save(fresh)}else if(b.action==='remove'){const remaining=c.access.filter(code=>!codes.includes(code));if(!remaining.length)throw Error('Mantenha ao menos um usuário autorizado.');c.access=remaining;c.accessUsers=c.accessUsers||{};for(const code of codes)delete c.accessUsers[String(code)];integration.save(c)}else throw Error('Ação inválida.');return send(res,200,{ok:true})}
+      if(req.method==='GET'&&url.pathname==='/api/admin/integration/users'){const users=await listActiveUsers(c),fresh=integration.read();fresh.accessUsers=fresh.accessUsers||{};for(const u of users)if(fresh.access.includes(u.code))fresh.accessUsers[String(u.code)]={name:u.name,group:u.group};integration.save(fresh);return send(res,200,{users})}
+      if(req.method==='GET'&&url.pathname==='/api/admin/integration/certificate'){const f='/certs/caddy/pki/authorities/local/root.crt';if(!fs.existsSync(f))return send(res,404,{error:'Certificado ainda não disponível.'});res.writeHead(200,{'Content-Type':'application/x-x509-ca-cert','Content-Disposition':'attachment; filename="movetrack-ca.crt"','Cache-Control':'no-store'});return fs.createReadStream(f).pipe(res)}
+      return send(res,404,{error:'Rota não encontrada.'});
+    }
     if (req.method === 'POST' && url.pathname === '/api/admin/products') {
       if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' });
       const input=await body(req),product = productInput(input);
@@ -190,7 +210,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
       const emit=(stage,extra={})=>{if(!res.destroyed)res.write(JSON.stringify({stage,...extra})+'\n')};
       try{
-        const incoming=await synchronize({onStage:emit});
+        const incoming=await synchronize({env:integration.env(),onStage:emit});
         // Re-read after network calls so pallet movements during synchronization are preserved.
         const fresh=readData(),result=updateCatalog(fresh.products,incoming,productInput);
         if(res.destroyed)return;
@@ -239,7 +259,7 @@ const server = http.createServer(async (req, res) => {
       const options=await body(req),buffer=await monthlyPdf(data,{month:options.month,types:options.types,order:options.order});
       res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`inline; filename="MoveTrack-Relatorio-${options.month}.pdf"`,'Cache-Control':'no-store'});return res.end(buffer);
     }
-    if (req.method === 'POST' && url.pathname === '/api/admin/settings') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const monthly=monthlySettings(data.settings,b); if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(b.discordHour||''))) throw new Error('Informe o horário no formato 24h (HH:MM).'); Object.assign(data.settings,monthly);data.settings.discordWebhook = String(b.discordWebhook || '').trim(); data.settings.discordHour = b.discordHour; data.settings.discordDays = (b.discordDays||[]).map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=6);data.settings.defaultProductColor=/^#[0-9a-f]{6}$/i.test(String(b.defaultProductColor||''))?String(b.defaultProductColor):'#001834';data.settings.productLines=(b.productLines||[]).map(x=>({name:String(x.name||'').trim(),match:String(x.match||'').trim(),color:/^#[0-9a-f]{6}$/i.test(String(x.color||''))?String(x.color):data.settings.defaultProductColor})).filter(x=>x.name&&x.match); writeData(data); return send(res, 200, { ok: true }); }
+    if (req.method === 'POST' && url.pathname === '/api/admin/settings') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); const b = await body(req); const monthly=monthlySettings(data.settings,b); if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(b.discordHour||''))) throw new Error('Informe o horário no formato 24h (HH:MM).'); Object.assign(data.settings,monthly);if(b.discordWebhook!==undefined&&user.integrationAllowed)data.settings.discordWebhook = String(b.discordWebhook || '').trim(); data.settings.discordHour = b.discordHour; data.settings.discordDays = (b.discordDays||[]).map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=6);data.settings.defaultProductColor=/^#[0-9a-f]{6}$/i.test(String(b.defaultProductColor||''))?String(b.defaultProductColor):'#001834';data.settings.productLines=(b.productLines||[]).map(x=>({name:String(x.name||'').trim(),match:String(x.match||'').trim(),color:/^#[0-9a-f]{6}$/i.test(String(x.color||''))?String(x.color):data.settings.defaultProductColor})).filter(x=>x.name&&x.match); writeData(data); return send(res, 200, { ok: true }); }
     if (req.method === 'POST' && url.pathname === '/api/admin/test-discord') { if (!can(user, ['Administrador'])) return send(res, 403, { error: 'Sem permissão.' }); await sendDiscord(data); return send(res, 200, { ok: true }); }
     return send(res, 404, { error: 'Rota não encontrada.' });
   } catch (error) { return send(res, 400, { error: error.message || 'Não foi possível concluir a operação.' }); }
